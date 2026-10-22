@@ -3,7 +3,8 @@
  *
  * generateArchitecture: BuildingConfig -> ComponentRecord[] (pure, deterministic), from the
  * same plan model the validators check. Output order per storey: walls, openings,
- * balconies; then facade, entrance and roof.
+ * balconies, floor finishes, wet-wall tiling, ceilings, ceiling fittings; then facade,
+ * entrance, roof and stair finishes.
  */
 
 import { validateConfig, type BuildingConfig } from "../config";
@@ -16,6 +17,11 @@ import { generateBalconies } from "./balconies";
 import { generateFacade } from "./facade";
 import { generateEntrance } from "./entrance";
 import { generateRoof } from "./roof";
+import { interiorContext } from "./interior";
+import { generateFloors } from "./floors";
+import { ceilingFixtures, generateCeilings } from "./ceilings";
+import { generateWetTiling } from "./tiling";
+import { generateStairFinishes } from "./stairFinish";
 
 export interface StoreyBuild {
   readonly plan: FloorPlan;
@@ -36,6 +42,8 @@ export function generateArchitectureModel(cfg: BuildingConfig, arch: Architectur
     const plan = buildFloorPlan(cfg, s, arch);
     const w = generateWalls(plan, cfg, arch);
     records.push(...w.records, ...generateOpenings(plan, w.walls, cfg, arch), ...generateBalconies(plan, cfg, arch));
+    const ictx = interiorContext(plan, cfg, arch);
+    records.push(...generateFloors(ictx), ...generateWetTiling(ictx), ...generateCeilings(ictx), ...ceilingFixtures(ictx));
     storeys.push({ plan, walls: w.walls });
   }
   const ground = storeys[0]!.plan;
@@ -44,6 +52,7 @@ export function generateArchitectureModel(cfg: BuildingConfig, arch: Architectur
     ...generateFacade({ cfg, arch, balconies: typical.balconies, ground }),
     ...generateEntrance(ground, typical.balconies, cfg, arch),
     ...generateRoof(typical.balconies, cfg, arch),
+    ...generateStairFinishes(cfg, arch).records,
   );
   return { records, storeys };
 }

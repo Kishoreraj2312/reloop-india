@@ -14,6 +14,7 @@ import { ARCH_CONFIG, archDatums, type ArchitectureConfig } from "./config";
 import { facadeBox, facadeFrame } from "./balconies";
 import { finLines } from "./facade";
 import { buildDoor } from "./doors";
+import { wellFootprint } from "./stairwell";
 import type { PlanBalcony, Side } from "./plan";
 import { rect, subtractAll, type PlanRect } from "./rect";
 import { arcAssembly, arcRecord, box, boxGeom, dimsHorizontal, dimsSolid, dimsVertical, pad2, unionBox, type Box } from "./record";
@@ -134,8 +135,7 @@ export function generateRoof(balconies: readonly PlanBalcony[], cfg: BuildingCon
   const so0 = rf.enclosure.slabOverhang;
   const slab = box(encOuter.x0 - so0, encOuter.x1 + so0, encTop, encTop + rf.enclosure.slab, encOuter.z0 - so0, encOuter.z1 + so0);
   mum.push({ loc: "SLB", name: "enclosure roof slab", type: "enclosure_slab", mat: "concrete_balcony", b: slab, unit: "m3", dims: dimsHorizontal(slab) });
-  const so = openingOf(g, "stair");
-  const floorRects = subtractAll(rect(ex0 + h, ex1 - h, ez0 + h, ez1 - h), [rect(so.x0, so.x1, so.z0, so.z1)]);
+  const floorRects = subtractAll(rect(ex0 + h, ex1 - h, ez0 + h, ez1 - h), [wellFootprint(cfg, arch)]);
   floorRects.forEach((r, i) => {
     const b = box(r.x0, r.x1, E, ffl, r.z0, r.z1);
     mum.push({ loc: `FLR${pad2(i + 1)}`, name: "enclosure floor finish", type: "enclosure_floor", mat: "tile_porcelain_floor", b, unit: "m2", dims: dimsHorizontal(b) });

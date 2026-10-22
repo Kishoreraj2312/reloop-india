@@ -33,6 +33,90 @@ interface Entry {
   readonly r: ComponentRecord;
   readonly solids: readonly Box3[];
   readonly bounds: Box3;
+  /** Exact shape for sloped members: an extrusion along X of a (z, y) polygon. */
+  readonly ext: ExtrusionX | null;
+}
+
+/** A solid that is a 2D polygon in the (z, y) plane extruded along X. */
+interface ExtrusionX {
+  readonly x0: number;
+  readonly x1: number;
+  readonly poly: readonly (readonly [number, number])[]; // (z, y)
+  readonly convex: boolean;
+  readonly exact: boolean; // true when the AABB would over-report (rotated box or stair prism)
+}
+
+function extrusionOf(r: ComponentRecord): ExtrusionX | null {
+  const g = r.geometry;
+  const [px, py, pz] = r.originalPosition;
+  const [rx, ry, rz] = r.originalRotation;
+  if (g.kind === "box" && ry === 0 && rz === 0) {
+    const [sx, sy, sz] = g.size;
+    const c = Math.cos(rx);
+    const sn = Math.sin(rx);
+    // Local (y, z) corners rotated about X: y' = y c - z s, z' = y s + z c
+    const corners = [
+      [-sy / 2, -sz / 2],
+      [sy / 2, -sz / 2],
+      [sy / 2, sz / 2],
+      [-sy / 2, sz / 2],
+    ].map(([y, z]) => [pz + y! * sn + z! * c, py + y! * c - z! * sn] as const);
+    return { x0: px - sx / 2, x1: px + sx / 2, poly: corners, convex: true, exact: rx !== 0 };
+  }
+  if (g.kind === "prism" && g.plane === "zy" && rx === 0 && ry === 0 && rz === 0) {
+    return { x0: px - g.extent / 2, x1: px + g.extent / 2, poly: g.profile.map(([z, y]) => [pz + z, py + y] as const), convex: false, exact: true };
+  }
+  return null;
+}
+
+type P2 = readonly [number, number];
+
+function signedArea(poly: readonly P2[]): number {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, y0] = poly[i]!;
+    const [x1, y1] = poly[(i + 1) % poly.length]!;
+    a += x0 * y1 - x1 * y0;
+  }
+  return a / 2;
+}
+
+/** Sutherland-Hodgman: subject (any simple polygon) clipped by a convex polygon; returns the area. */
+function clipArea(subject: readonly P2[], clip: readonly P2[]): number {
+  const ccw = signedArea(clip) > 0;
+  let out: P2[] = [...subject];
+  for (let i = 0; i < clip.length && out.length; i++) {
+    const a = clip[i]!;
+    const b = clip[(i + 1) % clip.length]!;
+    const side = (p: P2) => {
+      const v = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+      return ccw ? v : -v;
+    };
+    const input = out;
+    out = [];
+    for (let j = 0; j < input.length; j++) {
+      const p = input[j]!;
+      const q = input[(j + 1) % input.length]!;
+      const sp = side(p);
+      const sq = side(q);
+      if (sp >= 0) out.push(p);
+      if ((sp >= 0) !== (sq >= 0)) {
+        const t = sp / (sp - sq);
+        out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+      }
+    }
+  }
+  return out.length < 3 ? 0 : Math.abs(signedArea(out));
+}
+
+/** Exact overlap volume for pairs involving sloped members; null when not applicable. */
+function exactVolume(a: Entry, b: Entry): number | null {
+  if (!a.ext || !b.ext || (!a.ext.exact && !b.ext.exact)) return null;
+  const dx = Math.min(a.ext.x1, b.ext.x1) - Math.max(a.ext.x0, b.ext.x0);
+  if (dx <= 0) return 0;
+  if (!a.ext.convex && !b.ext.convex) return null; // prism vs prism: fall back to boxes
+  const [subj, clip] = a.ext.convex ? [b.ext.poly, a.ext.poly] : [a.ext.poly, b.ext.poly];
+  return dx * clipArea(subj, clip);
 }
 
 const CELL = 2.0;
@@ -47,7 +131,7 @@ function cellsOf(b: Box3): string[] {
 }
 
 function entries(records: readonly ComponentRecord[]): Entry[] {
-  return records.filter((r) => r.geometry.kind !== "group").map((r) => ({ r, solids: recordSolids(r), bounds: recordBounds(r) }));
+  return records.filter((r) => r.geometry.kind !== "group").map((r) => ({ r, solids: recordSolids(r), bounds: recordBounds(r), ext: extrusionOf(r) }));
 }
 
 /**
@@ -74,8 +158,11 @@ export function findOverlaps(records: readonly ComponentRecord[], others?: reado
       if (!others && j <= ia) continue;
       const b = B[j]!;
       if (overlapVolume(a.bounds, b.bounds) <= VOL_EPS) continue;
-      let v = 0;
-      for (const sa of a.solids) for (const sb of b.solids) v += overlapVolume(sa, sb);
+      let v = exactVolume(a, b) ?? -1;
+      if (v < 0) {
+        v = 0;
+        for (const sa of a.solids) for (const sb of b.solids) v += overlapVolume(sa, sb);
+      }
       if (v <= VOL_EPS) continue;
       if (rules.some((rule) => rule.allow(a.r, b.r) || rule.allow(b.r, a.r))) continue;
       const key = a.r.id < b.r.id ? `${a.r.id}|${b.r.id}` : `${b.r.id}|${a.r.id}`;
