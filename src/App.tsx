@@ -1,7 +1,7 @@
 /**
  * ReLoop India — Main application.
  *
- * A1 structural frame + A2 architecture, generated once from the building config and
+ * A1 structural frame + A2 architecture + A3 MEP, generated once from the building config and
  * registered once; the viewer renders these same records, so registry and meshes cannot
  * diverge. Click any component to inspect it; the controls panel toggles layers and floors.
  *
@@ -14,6 +14,7 @@ import { DEFAULT_CONFIG } from "@/building/config";
 import { registry } from "@/building/registry";
 import { getStructure } from "@/building/structure";
 import { getArchitecture } from "@/building/architecture/generate";
+import { getMep } from "@/building/mep/generate";
 import { Viewer } from "@/scene/Viewer";
 import { ComponentInspector } from "@/scene/ComponentInspector";
 import { ControlsPanel } from "@/scene/ControlsPanel";
@@ -24,7 +25,7 @@ import { DEFAULT_VIEW, LAYERS, type LayerKey, type ViewState } from "@/scene/vie
 
 const VIEWS: readonly ViewName[] = ["full", "top", "stair", "section"];
 
-const records = [...getStructure(DEFAULT_CONFIG), ...getArchitecture(DEFAULT_CONFIG).records];
+const records = [...getStructure(DEFAULT_CONFIG), ...getArchitecture(DEFAULT_CONFIG).records, ...getMep(DEFAULT_CONFIG).records];
 registry.clear();
 registry.registerAll(records);
 

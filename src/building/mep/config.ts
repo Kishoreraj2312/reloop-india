@@ -25,9 +25,9 @@ export const MEP_CONFIG = {
   /** Cable tray bottom above the storey slab top (corridor, services room, shaft branches). */
   trayBottom: 3.01,
   /** Zone B for drains hanging below slab s: between the wall tops and the slab soffit. */
-  drainZone: { aboveWallTop: 0.02, belowSoffit: 0.03 },
+  drainZone: { aboveWallTop: 0.03, belowSoffit: 0.03 },
   /** Ground floor drains below the L0 slab (soil), and the underground building drain. */
-  ground: { branchTop: -0.2, branchBottom: -0.46, drainTop: -0.56, drainFloor: -0.86 },
+  ground: { branchTop: -0.17, branchBottom: -0.46, stackBase: -0.78, drainFloor: -1.3 },
   /** Concealed pipes/conduits run in wall chases this far behind the plaster face (centreline). */
   chase: 0.035,
   /** Void connection point in front of a wall chase (into the room). */
@@ -54,7 +54,7 @@ export const MEP_CONFIG = {
   /** Falls (1 in n). */
   slope: { soil: 1 / 60, waste: 1 / 40, underground: 1 / 100 },
   /** Stack: soil + waste single stack (vented through the roof), standing off its walls. */
-  stack: { ventAboveRoof: 1.2, standoff: 0.01, candidateStep: 0.05 },
+  stack: { ventAboveRoof: 1.2, standoff: 0.02, candidateStep: 0.05 },
   /** Fixture tails: wall waste outlets on gridline walls step out this far before the floor. */
   tail: { floorStep: 0.075, chaseBottom: 0.12 },
   water: {

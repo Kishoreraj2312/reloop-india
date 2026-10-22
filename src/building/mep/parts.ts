@@ -26,6 +26,7 @@ export const FIT = { hub: 1.32, leg: 2.7 } as const;
 export type FittingPart =
   | "elbow"
   | "tee"
+  | "cross"
   | "cap"
   | "valve-gate"
   | "valve-ball"
@@ -52,6 +53,9 @@ export function fittingBox(part: FittingPart, r: number): { lo: Vec3; hi: Vec3 }
       return b([-1.15, -1.15, -1.15], [3.2, 3.2, 1.15]);
     case "tee":
       return { lo: [-L, -h, -h], hi: [L, L, h] };
+    case "cross":
+      // double branch (stack junctions): run along X, branches along ±Y
+      return { lo: [-L, -L, -h], hi: [L, L, h] };
     case "cap":
       return b([-0.7, -FIT.hub, -FIT.hub], [FIT.leg, FIT.hub, FIT.hub]);
     case "valve-gate":
@@ -67,7 +71,7 @@ export function fittingBox(part: FittingPart, r: number): { lo: Vec3; hi: Vec3 }
     case "trap-bottle":
       return b([-1.7, -3.6, -1.7], [FIT.leg, FIT.leg, 1.7]);
     case "trap-floor":
-      return b([-2.3, -2.6, -2.3], [Math.max(FIT.leg, 2.3), FIT.leg, 2.3]);
+      return b([-1.85, -2.5, -1.85], [FIT.leg, FIT.leg, 1.85]);
     case "cleanout":
       return b([-2.5, -1.3, -1.3], [2.5, 2.4, 1.3]);
     case "cowl":
@@ -83,6 +87,7 @@ export const PART_FILL: Readonly<Record<string, number>> = {
   elbow: 0.18,
   "bend-conduit": 0.15,
   tee: 0.22,
+  cross: 0.24,
   cap: 0.5,
   "valve-gate": 0.2,
   "valve-ball": 0.25,

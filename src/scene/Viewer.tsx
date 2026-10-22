@@ -36,7 +36,8 @@ interface ViewerProps {
 }
 
 export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState, onSelect, selectedId = null, onViewState, clipOverride }: ViewerProps) {
-  const bounds = useMemo(() => unionBounds(records), [records]);
+  // Framing and the shadow camera follow the building itself (site MEP items lie outside it).
+  const bounds = useMemo(() => unionBounds(records.filter((r) => r.system === "structure" || r.system === "architecture")), [records]);
   const { ctx, groundY, gridSize } = useMemo(() => {
     const grid = buildGrid(cfg);
     const op = openingOf(grid, "stair");

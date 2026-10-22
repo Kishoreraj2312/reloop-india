@@ -106,6 +106,16 @@ export class Net {
     this.nodes[n]!.record = record;
   }
 
+  /** Record emitted for a node's fitting / part (after emit). */
+  emittedAt(n: number): string | undefined {
+    return this.nodes[n]!.emitted;
+  }
+
+  /** Run records incident to a node (after emit). */
+  runsAt(n: number): string[] {
+    return this.nodes[n]!.edges.map((k) => this.edges[k]!.record!).filter(Boolean);
+  }
+
   edge(a: number, b: number, spec: RunSpec): number {
     if (a === b) throw new Error("MEP: zero-length run");
     const pa = this.nodes[a]!.p;
@@ -134,6 +144,13 @@ export class Net {
   emit(drafts: MepDrafts): void {
     // Runs first (fittings link to them), in insertion order.
     for (const e of this.edges) e.record = emitRun(drafts, this.nodes[e.a]!.p, this.nodes[e.b]!.p, e.spec).id;
+    // Runs meeting an external record at several nodes (e.g. trap -> A2 connection point ->
+    // wall chase) continue through it: join them directly so the network stays traceable.
+    const viaExternal = new Map<string, Edge[]>();
+    for (const n of this.nodes) if (n.record && !drafts.byId.has(n.record)) for (const k of n.edges) (viaExternal.get(n.record) ?? viaExternal.set(n.record, []).get(n.record)!).push(this.edges[k]!);
+    for (const list of viaExternal.values())
+      for (let p = 0; p < list.length; p++)
+        for (let q = p + 1; q < list.length; q++) if (list[p]!.spec.networkId === list[q]!.spec.networkId) drafts.link(list[p]!.record!, list[q]!.record!);
     this.nodes.forEach((n, i) => {
       const inc = n.edges.map((k) => this.edges[k]!);
       if (inc.length === 0) return;
@@ -188,6 +205,10 @@ function autoPart(inc: Edge[], legs: V3[]): AutoPart {
     return { kind: types.tee as FittingPart, group: e.spec.group, networkId: e.spec.networkId, materialId: e.spec.materialId, label: kind === "tray" ? "tray tee piece" : kind === "conduit" ? "junction box (round, 3-way)" : e.spec.gradient !== undefined || e.spec.flow === "downstream" ? "junction (sanitary tee)" : "equal / reducing tee", componentType: kind === "tray" ? "tray_fitting" : kind === "conduit" ? "junction_box" : "pipe_tee", ...(e.spec.category ? { category: e.spec.category } : {}) };
   }
   if (kind === "cable" || kind === "strip") return "none";
+  if (inc.length === 4 && kind === "pipe") {
+    const e = largest(inc);
+    return { kind: "cross", group: e.spec.group, networkId: e.spec.networkId, materialId: e.spec.materialId, label: "double junction (double sanitary tee)", componentType: "pipe_cross", ...(e.spec.category ? { category: e.spec.category } : {}) };
+  }
   throw new Error(`MEP: ${inc.length}-way joint in ${inc[0]!.spec.group.id} (not supported)`);
 }
 
@@ -205,6 +226,13 @@ function fittingBasis(kind: FittingPart | "tray-node", legs: V3[], up?: V3): { e
       const h = ax.findIndex((a) => Math.abs(a[1]) < 0.5);
       if ((kind === "trap-bottle" || kind === "trap-floor") && h >= 0) return { ex: ax[h]!, ey: ax[1 - h]! };
       return { ex: ax[0]!, ey: ax[1]! };
+    }
+    case "cross": {
+      // two straight pairs: run on X, branches on Y
+      const pairs: [number, number][] = [];
+      for (let i = 0; i < ax.length; i++) for (let j = i + 1; j < ax.length; j++) if (dot(ax[i]!, ax[j]!) < -0.999) pairs.push([i, j]);
+      if (pairs.length < 2) throw new Error("MEP: cross without two straight pairs");
+      return { ex: ax[pairs[0]![0]]!, ey: ax[pairs[1]![0]]! };
     }
     case "tee":
     case "jb":

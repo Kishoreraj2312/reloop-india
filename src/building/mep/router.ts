@@ -21,6 +21,10 @@ export interface RouteOptions {
   /** Allowed area: the run centreline must stay inside the union of these rectangles. */
   readonly region?: readonly PlanRect[];
   readonly bendCost?: number;
+  /** Shortest leg allowed (room for the fittings at both ends of a leg). */
+  readonly minLeg?: number;
+  /** Validity of the fittings the path creates at its ends (legs already there + the new leg). */
+  readonly endsOk?: (first: V3, last: V3) => boolean;
 }
 
 const EPS = 1e-7;
@@ -56,10 +60,18 @@ export function inRegion(a: P2, b: P2, region: readonly PlanRect[] | undefined):
   return lo >= hi - EPS;
 }
 
-function pathOk(path: readonly P2[], half: number, obstacles: readonly PlanRect[], region?: readonly PlanRect[]): boolean {
+function pathOk(path: readonly P2[], half: number, obstacles: readonly PlanRect[], region?: readonly PlanRect[], minLeg = 0): boolean {
   for (let i = 0; i + 1 < path.length; i++) {
     const a = path[i]!;
     const b = path[i + 1]!;
+    // consecutive legs must turn (a reversal would double the run back over itself)
+    if (i > 0) {
+      const p = path[i - 1]!;
+      const sameX = Math.abs(p[0] - a[0]) < EPS && Math.abs(a[0] - b[0]) < EPS;
+      const sameZ = Math.abs(p[1] - a[1]) < EPS && Math.abs(a[1] - b[1]) < EPS;
+      if (sameX || sameZ) return false;
+    }
+    if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < minLeg - 1e-9) return false;
     if (Math.abs(a[0] - b[0]) > EPS && Math.abs(a[1] - b[1]) > EPS) return false;
     if (Math.abs(a[0] - b[0]) < EPS && Math.abs(a[1] - b[1]) < EPS) return false;
     if (segBlocked(a, b, half, obstacles) || !inRegion(a, b, region)) return false;
@@ -97,10 +109,12 @@ export function pathLength(path: readonly P2[]): number {
 const cost = (path: readonly P2[], bend: number) => pathLength(path) + bend * Math.max(0, path.length - 2);
 
 /** Candidate coordinates: obstacle and region edges just outside the inflated run. */
-function candidates(a: P2, b: P2, half: number, obstacles: readonly PlanRect[], region: readonly PlanRect[] | undefined, axis: 0 | 1, reach: number): number[] {
+function candidates(a: P2, b: P2, half: number, obstacles: readonly PlanRect[], region: readonly PlanRect[] | undefined, axis: 0 | 1, reach: number, minLeg = 0): number[] {
   const lo = Math.min(a[axis], b[axis]) - reach;
   const hi = Math.max(a[axis], b[axis]) + reach;
   const s = new Set<number>([a[axis], b[axis]]);
+  // U-shape offsets so that short offsets can still be made with legs >= minLeg
+  if (minLeg > 0) for (const v of [a[axis], b[axis]]) for (const k of [1, 1.5, 2]) s.add(v - k * minLeg).add(v + k * minLeg);
   const d = half + 1e-4;
   for (const o of obstacles) {
     const [o0, o1] = axis === 0 ? [o.x0, o.x1] : [o.z0, o.z1];
@@ -128,15 +142,19 @@ export function routeOrtho(a: P2, b: P2, obstacles: readonly PlanRect[], opt: Ro
   let best: P2[] | null = null;
   const consider = (p: P2[]) => {
     const s = simplify(p);
-    if (s.length < 2 || !pathOk(s, half, near, region)) return;
+    if (s.length < 2 || !pathOk(s, half, near, region, opt.minLeg)) return;
+    if (opt.endsOk && !opt.endsOk(legTo(s[0]!, s[1]!), legTo(s[s.length - 1]!, s[s.length - 2]!))) return;
     if (!best || cost(s, bend) < cost(best, bend) - 1e-9) best = s;
   };
   shapes.forEach(consider);
   if (best) return best;
-  for (const m of candidates(a, b, half, near, region, 0, 3)) consider([a, [m, a[1]], [m, b[1]], b]);
-  for (const m of candidates(a, b, half, near, region, 1, 3)) consider([a, [a[0], m], [b[0], m], b]);
+  for (const m of candidates(a, b, half, near, region, 0, 3, opt.minLeg)) consider([a, [m, a[1]], [m, b[1]], b]);
+  for (const m of candidates(a, b, half, near, region, 1, 3, opt.minLeg)) consider([a, [a[0], m], [b[0], m], b]);
   if (best) return best;
-  return gridSearch(a, b, near, opt);
+  const g = gridSearch(a, b, near, opt);
+  if (!g || !pathOk(g, half, near, region, opt.minLeg)) return null;
+  if (opt.endsOk && !opt.endsOk(legTo(g[0]!, g[1]!), legTo(g[g.length - 1]!, g[g.length - 2]!))) return null;
+  return g;
 }
 
 /** Orthogonal visibility search over candidate coordinates (fallback). */
@@ -210,6 +228,7 @@ export interface TreePoint {
   /** Axis-aligned leg directions at this point (3D: horizontal legs plus fixed vertical ones). */
   readonly legs: V3[];
   readonly term?: string;
+  readonly attach?: boolean;
 }
 
 export interface TreeTerm {
@@ -217,6 +236,14 @@ export interface TreeTerm {
   readonly p: P2;
   /** Legs already present at the terminal (e.g. the vertical drop, or the stub into a wall). */
   readonly legs: readonly V3[];
+  /** Later runs may join at this terminal (default: TreeOptions.attachTerms). */
+  readonly attach?: boolean;
+  /** Shortest leg for this terminal's run (default: TreeOptions.jointGap). */
+  readonly minLeg?: number;
+  /** Half width of this terminal's own run (default: TreeOptions.half). */
+  readonly half?: number;
+  /** Area other runs must keep out of (e.g. the terminal's stub into its wall). */
+  readonly keep?: PlanRect;
 }
 
 export interface Tree {
@@ -229,6 +256,23 @@ export interface Tree {
 export interface TreeOptions extends RouteOptions {
   /** Keep joins this far from existing joints (room for the fittings). */
   readonly jointGap: number;
+  /** Allow later terminals to join at an earlier terminal (default true). */
+  readonly attachTerms?: boolean;
+  /** "near": terminal nearest to the tree joins next (Prim); "far": farthest from the root first (trunk first). */
+  readonly order?: "near" | "far";
+  /** Weight of the tree distance from the join point back to the root (drains: keep each run short). */
+  readonly depthWeight?: number;
+  /** The root accepts a double branch (two opposite horizontal legs) as well as a tee. */
+  readonly rootCross?: boolean;
+}
+
+/** Two straight pairs (a cross / double junction). */
+export function crossOk(legs: readonly V3[]): boolean {
+  if (legs.length !== 4) return false;
+  for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) if (legEq(legs[i]!, legs[j]!)) return false;
+  let pairs = 0;
+  for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) if (legOpp(legs[i]!, legs[j]!)) pairs++;
+  return pairs === 2;
 }
 
 const legEq = (a: V3, b: V3) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
@@ -266,6 +310,8 @@ const manhattan = (p: P2, q: P2) => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]
 
 export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly TreeTerm[], obstacles: readonly PlanRect[], opt: TreeOptions): Tree {
   const pts: TreePoint[] = [{ p: root.p, legs: [...root.legs] }];
+  const rootDist: number[] = [0];
+  const dw = opt.depthWeight ?? 0;
   const segs: [number, number][] = [];
   const unresolved: string[] = [];
   const remaining = [...terms].sort((p, q) => (p.key < q.key ? -1 : p.key > q.key ? 1 : 0));
@@ -300,7 +346,8 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
     return out;
   };
 
-  const pointObstacles = (except: string) => remaining.filter((t) => t.key !== except).map((t) => segRect(t.p, t.p, opt.half));
+  const keeps = terms.filter((t) => t.keep).map((t) => ({ key: t.key, r: t.keep! }));
+  const pointObstacles = (except: string) => [...remaining.filter((t) => t.key !== except).map((t) => segRect(t.p, t.p, opt.half)), ...keeps.filter((k) => k.key !== except).map((k) => k.r)];
 
   while (remaining.length) {
     // Next terminal: nearest (manhattan) to the current tree.
@@ -308,10 +355,13 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
     let bd = Infinity;
     remaining.forEach((t, i) => {
       let d = Infinity;
-      for (const q of pts) d = Math.min(d, manhattan(t.p, q.p));
-      for (const [u, v] of segs) {
-        const pr = projectOnSeg(t.p, pts[u]!.p, pts[v]!.p);
-        if (pr) d = Math.min(d, manhattan(t.p, pr));
+      if (opt.order === "far") d = -manhattan(t.p, root.p);
+      else {
+        for (const q of pts) d = Math.min(d, manhattan(t.p, q.p));
+        for (const [u, v] of segs) {
+          const pr = projectOnSeg(t.p, pts[u]!.p, pts[v]!.p);
+          if (pr) d = Math.min(d, manhattan(t.p, pr));
+        }
       }
       if (d < bd - 1e-9) {
         bd = d;
@@ -322,29 +372,41 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
     // Candidate joins: vertices and perpendicular projections onto runs, nearest first.
     type Cand = { kind: "vertex"; v: number; at: P2 } | { kind: "split"; seg: number; at: P2 };
     const cands: Cand[] = [];
-    pts.forEach((q, v) => cands.push({ kind: "vertex", v, at: q.p }));
+    pts.forEach((q, v) => {
+      if (!q.term || (q.attach ?? opt.attachTerms !== false)) cands.push({ kind: "vertex", v, at: q.p });
+    });
     segs.forEach(([u, v], seg) => {
       const pr = projectOnSeg(t.p, pts[u]!.p, pts[v]!.p);
-      if (pr && manhattan(pr, pts[u]!.p) > 2 * gap && manhattan(pr, pts[v]!.p) > 2 * gap) cands.push({ kind: "split", seg, at: pr });
+      if (pr && manhattan(pr, pts[u]!.p) > gap && manhattan(pr, pts[v]!.p) > gap) cands.push({ kind: "split", seg, at: pr });
     });
-    cands.sort((p, q) => manhattan(t.p, p.at) - manhattan(t.p, q.at));
+    const cdepth = (c: Cand) => dw * (c.kind === "vertex" ? rootDist[c.v]! : rootDist[segs[c.seg]![0]]! + manhattan(pts[segs[c.seg]![0]]!.p, c.at));
+    cands.sort((p, q) => manhattan(t.p, p.at) + cdepth(p) - manhattan(t.p, q.at) - cdepth(q));
     const statics = [...obstacles, ...pointObstacles(t.key)];
     let best: { cand: Cand; path: P2[]; cost: number } | null = null;
     const tryCands = (list: Cand[]) => {
       for (const c of list) {
-        if (best && manhattan(t.p, c.at) >= best.cost) break;
+        const depth = dw * (c.kind === "vertex" ? rootDist[c.v]! : rootDist[segs[c.seg]![0]]! + manhattan(pts[segs[c.seg]![0]]!.p, c.at));
+        if (best && manhattan(t.p, c.at) + depth >= best.cost) continue;
         const open =
           c.kind === "split"
             ? [{ seg: c.seg, at: c.at }]
             : segs.map((s, k) => ({ s, k })).filter(({ s }) => s[0] === c.v || s[1] === c.v).map(({ k }) => ({ seg: k, at: c.at }));
-        const path = routeOrtho(t.p, c.at, [...statics, ...treeObstacles(open)], opt);
+        const leg = t.minLeg ?? gap;
+        const endLegs = c.kind === "vertex" ? pts[c.v]!.legs : [legTo(c.at, pts[segs[c.seg]![0]]!.p), legTo(c.at, pts[segs[c.seg]![1]]!.p)];
+        const endsOk = (first: V3, last: V3) => {
+          if (!legsOk([...t.legs, first])) return false;
+          const nl = [...endLegs, last];
+          return legsOk(nl) || (c.kind === "vertex" && c.v === 0 && !!opt.rootCross && crossOk(nl));
+        };
+        const path = routeOrtho(t.p, c.at, [...statics, ...treeObstacles(open)], { ...opt, minLeg: leg, endsOk, half: t.half ?? opt.half });
         if (!path) continue;
         // Fittings at both ends must stay valid.
         const first = legTo(path[0]!, path[1]!);
         if (!legsOk([...t.legs, first])) continue;
         const last = legTo(path[path.length - 1]!, path[path.length - 2]!);
         if (c.kind === "vertex") {
-          if (!legsOk([...pts[c.v]!.legs, last])) continue;
+          const nl = [...pts[c.v]!.legs, last];
+          if (!legsOk(nl) && !(c.v === 0 && opt.rootCross && crossOk(nl))) continue;
         } else {
           const [u, v] = segs[c.seg]!;
           const along = [legTo(c.at, pts[u]!.p), legTo(c.at, pts[v]!.p)];
@@ -352,9 +414,9 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
         }
         // Bends along the new path need room for an elbow.
         let shortLeg = false;
-        for (let i = 0; i + 1 < path.length; i++) if (manhattan(path[i]!, path[i + 1]!) < gap - 1e-9) shortLeg = true;
+        for (let i = 0; i + 1 < path.length; i++) if (manhattan(path[i]!, path[i + 1]!) < leg - 1e-9) shortLeg = true;
         if (shortLeg) continue;
-        const cst = cost(path, opt.bendCost ?? 0.25);
+        const cst = cost(path, opt.bendCost ?? 0.25) + depth;
         if (!best || cst < best.cost - 1e-9) best = { cand: c, path, cost: cst };
       }
     };
@@ -372,17 +434,23 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
       const [u, v] = segs[cand.seg]!;
       joinIdx = pts.length;
       pts.push({ p: cand.at, legs: [legTo(cand.at, pts[u]!.p), legTo(cand.at, pts[v]!.p)] });
+      rootDist.push(rootDist[u]! + manhattan(pts[u]!.p, cand.at));
       segs[cand.seg] = [u, joinIdx];
       segs.push([joinIdx, v]);
     }
     // New points from the terminal (path[0]) to the join (path[last]); oriented root-outward.
     const ids: number[] = [];
+    // distances back to the root along the new path
+    const along: number[] = new Array(path.length).fill(0);
+    along[path.length - 1] = rootDist[joinIdx]!;
+    for (let i = path.length - 2; i >= 0; i--) along[i] = along[i + 1]! + manhattan(path[i]!, path[i + 1]!);
     for (let i = 0; i < path.length - 1; i++) {
       const legs: V3[] = [];
       if (i === 0) legs.push(...t.legs);
       if (i > 0) legs.push(legTo(path[i]!, path[i - 1]!));
       legs.push(legTo(path[i]!, path[i + 1]!));
-      pts.push({ p: path[i]!, legs, ...(i === 0 ? { term: t.key } : {}) });
+      pts.push({ p: path[i]!, legs, ...(i === 0 ? { term: t.key, ...(t.attach !== undefined ? { attach: t.attach } : {}) } : {}) });
+      rootDist.push(along[i]!);
       ids.push(pts.length - 1);
     }
     pts[joinIdx]!.legs.push(legTo(path[path.length - 1]!, path[path.length - 2]!));

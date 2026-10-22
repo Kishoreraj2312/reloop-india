@@ -18,7 +18,6 @@ import {
   TorusGeometry,
   Vector2,
 } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { FIT, FIXED_PARTS, TRAY, fittingBox, type FittingPart } from "@/building/mep/parts";
 
 type Axis = "x" | "y" | "z";
@@ -127,8 +126,7 @@ function finish(prims: Prim[], base: number, lo: readonly number[], hi: readonly
     flat.setAttribute("color", new BufferAttribute(col, 3));
     return flat;
   });
-  const merged = mergeGeometries(parts, false);
-  if (!merged) throw new Error("part geometry merge failed");
+  const merged = mergeFlat(parts);
   for (const g of parts) g.dispose();
   // Map the local box [lo, hi] onto the unit cube centred at the origin.
   const size = [hi[0]! - lo[0]!, hi[1]! - lo[1]!, hi[2]! - lo[2]!];
@@ -149,6 +147,24 @@ function finish(prims: Prim[], base: number, lo: readonly number[], hi: readonly
   return merged;
 }
 
+/** Concatenate non-indexed geometries (position, normal, color). */
+function mergeFlat(parts: BufferGeometry[]): BufferGeometry {
+  const names = ["position", "normal", "color"] as const;
+  const total = parts.reduce((n, g) => n + g.getAttribute("position").count, 0);
+  const out = new BufferGeometry();
+  for (const name of names) {
+    const arr = new Float32Array(total * 3);
+    let o = 0;
+    for (const g of parts) {
+      const a = g.getAttribute(name) as BufferAttribute;
+      arr.set(a.array as Float32Array, o);
+      o += a.count * 3;
+    }
+    out.setAttribute(name, new BufferAttribute(arr, 3));
+  }
+  return out;
+}
+
 // ── fittings (r = 1) ──────────────────────────────────────────────────────────
 
 const PIPE = 1.08; // body tube radius relative to the pipe
@@ -163,6 +179,8 @@ function fittingPrims(part: FittingPart): Prim[] {
       return [bend(2.0, 1.02), cyl(1.12, 2.0, 3.2, "x"), cyl(1.12, 2.0, 3.2, "y")];
     case "tee":
       return [cyl(PIPE, -LEG, LEG, "x"), cyl(HUB, -LEG, -1.4, "x"), cyl(HUB, 1.4, LEG, "x"), cyl(PIPE, 0, LEG, "y"), cyl(HUB, 1.4, LEG, "y"), sphere(1.2, [0, 0, 0])];
+    case "cross":
+      return [cyl(PIPE, -LEG, LEG, "x"), cyl(HUB, -LEG, -1.4, "x"), cyl(HUB, 1.4, LEG, "x"), cyl(PIPE, -LEG, LEG, "y"), cyl(HUB, 1.4, LEG, "y"), cyl(HUB, -LEG, -1.4, "y"), sphere(1.25, [0, 0, 0])];
     case "cap":
       return [cyl(HUB, 0, LEG, "x"), sphere(HUB, [0, 0, 0], [0.55, 1, 1])];
     case "valve-gate":
@@ -188,7 +206,7 @@ function fittingPrims(part: FittingPart): Prim[] {
     case "trap-bottle":
       return [cyl(1.05, 0, LEG, "y", [0, 0], 16), cyl(1.7, -3.6, 0.7, "y"), sphere(1.7, [0, 0.7, 0], [1, 0.35, 1], undefined, true), cyl(1.05, 0, LEG, "x")];
     case "trap-floor":
-      return [cyl(2.3, -2.6, 0.8, "y", [0, 0], 22), cyl(1.35, 0.8, LEG, "y"), ring(1.35, 0.12, LEG - 0.1, "y"), cyl(PIPE, 0, Math.max(LEG, 2.3), "x"), cyl(HUB, 1.6, Math.max(LEG, 2.3), "x")];
+      return [cyl(1.85, -2.5, 0.75, "y", [0, 0], 22), sphere(1.85, [0, -2.5, 0], [1, 0.25, 1]), cyl(1.3, 0.75, LEG, "y"), ring(1.3, 0.11, LEG - 0.1, "y"), cyl(PIPE, 0, LEG, "x"), cyl(HUB, 1.5, LEG, "x")];
     case "cleanout":
       return [cyl(PIPE + 0.05, -2.5, 2.5, "x"), cyl(1.05, 0, 1.9, "y", [0, 0], 16), cyl(1.25, 1.9, 2.4, "y", [0, 0], 6, ACCENT.knob)];
     case "cowl":
