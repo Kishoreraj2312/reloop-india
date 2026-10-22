@@ -127,10 +127,11 @@ await shot("layer_exterior_hidden", "exterior walls layer off");
 // Isolate a floor via the select, toggle ceilings via checkbox, then reset
 await b.evaluate(`(() => { const s = document.querySelector('[data-testid=isolate]'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, 'L3'); s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
 await b.sleep(400);
-const iso = await b.evaluate(`(() => { const s = window.__reloop.scene; return { L3: s.getObjectByName("Floor_L3").visible, L2: s.getObjectByName("Floor_L2").visible, ceilings: s.getObjectByName("L3_architecture_ceilings").visible }; })()`);
+// ceiling boards (A3 keeps light fittings visible when ceilings are hidden)
+const iso = await b.evaluate(`(() => { const s = window.__reloop.scene; const boards = (g) => g.visible && g.children.some((c) => c.visible && !String(c.userData.batchKey).includes("|fixture_light|")); return { L3: s.getObjectByName("Floor_L3").visible, L2: s.getObjectByName("Floor_L2").visible, ceilings: boards(s.getObjectByName("L3_architecture_ceilings")) }; })()`);
 const ceil = await cb("[data-testid=ceilings]");
 await b.click(ceil.x, ceil.y);
-const ceilOn = await b.evaluate(`window.__reloop.scene.getObjectByName("L3_architecture_ceilings").visible`);
+const ceilOn = await b.evaluate(`(() => { const g = window.__reloop.scene.getObjectByName("L3_architecture_ceilings"); return g.visible && g.children.some((c) => c.visible && !String(c.userData.batchKey).includes("|fixture_light|")); })()`);
 report.checks.isolate = { ...iso, ceilingsAfterToggle: ceilOn, ok: iso.L3 && !iso.L2 && !iso.ceilings && ceilOn };
 const reset = await cb("[data-testid=reset]");
 await b.click(reset.x, reset.y);

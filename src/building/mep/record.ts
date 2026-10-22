@@ -116,6 +116,15 @@ export class MepDrafts {
     if (d && !d.dependencies.includes(upstream)) d.dependencies.push(upstream);
   }
 
+  /** Drop a draft (e.g. a device that could not be wired) and every joint to it. */
+  remove(id: string): void {
+    const d = this.byId.get(id);
+    if (!d) return;
+    for (const o of d.connections) this.byId.get(o)?.connections.delete(id);
+    this.byId.delete(id);
+    this.drafts.splice(this.drafts.indexOf(d), 1);
+  }
+
   get(id: string): Draft {
     const d = this.byId.get(id);
     if (!d) throw new Error(`MEP: unknown draft ${id}`);

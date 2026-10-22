@@ -21,7 +21,7 @@ export const MEP_CONFIG = {
   /** Gap kept between unrelated services and between services and structure. */
   clearance: 0.02,
   /** Zone A layer centrelines above the storey slab top (common water header sits under the tray). */
-  layers: { lighting: 2.89, power: 2.92, cold: 2.962, hot: 3.035, submain: 3.075 },
+  layers: { lighting: 2.885, power: 2.923, cold: 2.962, hot: 3.035, submain: 3.058 },
   /** Cable tray bottom above the storey slab top; tray centreline in the corridor (z). */
   trayBottom: 2.99,
   trayZ: -3.5,

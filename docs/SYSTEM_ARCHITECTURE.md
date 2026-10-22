@@ -39,6 +39,14 @@ src/
                              members), coplanar-face check
       generate.ts     generateArchitectureModel / memoised getArchitecture
       *.test.ts       plan, envelope, interiors, fixtures
+    mep/            — A3 pure generators: A1+A2 records -> PLB/ELC records (conceptual MEP)
+      config.ts       every MEP assumption (zones, sizes, falls, devices)
+      context.ts      shared state: spatial indexes, networks, A2 endpoint ledger, unresolved list
+      net.ts router.ts walls.ts space.ts geom.ts parts.ts record.ts   graph builder, plan router,
+                      wall chases, spatial index, part catalogue, drafts -> frozen records
+      drainage.ts rainwater.ts water.ts devices.ts electrical.ts      the systems
+      validate.ts     IDs, quantities, connectivity, falls, clashes (documented allow-list)
+      generate.ts     generateMep / memoised getMep
   scene/
     SceneHierarchy.tsx — Building > Floor > System > Assembly-category groups
     sceneTree.ts       — pure grouping of records into that hierarchy (per system)
@@ -52,10 +60,16 @@ src/
     Viewer.tsx, Lighting.tsx, EnvironmentLight.tsx (RoomEnvironment), SiteGround.tsx, CameraRig.tsx, framing.ts
     SelectionOutline.tsx (plain meshes, instances, whole assemblies), DevHooks.tsx (window.__reloop, dev only)
   App.tsx           — generate once (structure + architecture), register once, render; URL params
-scripts/browser/    — dependency-free Chrome/CDP verification (verify.mjs A1, verifyA2.mjs A2, shots.mjs)
+scripts/browser/    — dependency-free Chrome/CDP verification (verify.mjs A1, verifyA2.mjs A2, verifyA3.mjs A3, shots.mjs)
 scripts/plans/      — drawPlans.ts (npm run plans -> docs/plans/*.svg), schedule.ts, inventory.ts
 docs/               — Project documentation; docs/screenshots/a1, docs/screenshots/a2, docs/plans
 ```
+
+MEP rendering (A3): plumbing and electrical records go through the same instanced batches; catalogue
+parts use vertex-coloured unit meshes (`scene/mep/partGeometry.ts`). Controls add system and category
+toggles and an X-ray mode (A1/A2 materials ghosted); the inspector shows network, size, fall and
+connections and traces a network over `connectedTo` (highlighted by `SelectionOutline`). Light
+fittings stay visible when ceilings are hidden. See MEP_LAYOUT.md.
 
 ## Data Flow
 ```

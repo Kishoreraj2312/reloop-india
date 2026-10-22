@@ -155,7 +155,7 @@ const toRect = (b: Box3, grow: number): PlanRect => ({ x0: b.min[0] - grow, x1: 
  * plus every MEP item placed so far. Inflated by the service clearance.
  */
 export function planObstacles(ctx: MepContext, area: PlanRect, y: number, r: number, opts: { allow?: (r: ComponentRecord) => boolean; extraMep?: boolean; ignore?: ReadonlySet<string> } = {}): PlanRect[] {
-  const vc = 0.008; // vertical clearance (layers are stacked tightly under the beams)
+  const vc = 0.004; // vertical clearance (layers are stacked tightly under the beams)
   const q = box3(area.x0, area.x1, y - r - vc, y + r + vc, area.z0, area.z1);
   const out: PlanRect[] = [];
   const clr = MEP_CONFIG.clearance;

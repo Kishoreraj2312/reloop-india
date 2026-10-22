@@ -26,6 +26,7 @@ const isMep = (r: ComponentRecord) => r.system === "plumbing" || r.system === "e
 
 export function mepAllowRules(byId: ReadonlyMap<string, ComponentRecord>): AllowRule[] {
   const connected = (a: ComponentRecord, b: ComponentRecord) => (a.connectedTo ?? []).includes(b.id) || (b.connectedTo ?? []).includes(a.id);
+  const threeHop = (a: ComponentRecord, b: ComponentRecord) => (a.connectedTo ?? []).some((x) => (byId.get(x)?.connectedTo ?? []).some((y) => y === b.id || (byId.get(y)?.connectedTo ?? []).includes(b.id)));
   const twoHop = (a: ComponentRecord, b: ComponentRecord) => (a.connectedTo ?? []).some((x) => (byId.get(x)?.connectedTo ?? []).includes(b.id) || (b.connectedTo ?? []).includes(x));
   return [
     { reason: "physically joined components (pipe/fitting/endpoint contact)", allow: (a, b) => isMep(a) && connected(a, b) },
@@ -36,9 +37,10 @@ export function mepAllowRules(byId: ReadonlyMap<string, ComponentRecord>): Allow
     { reason: "sink waste/supply inside the sink base unit", allow: (a, b) => isMep(a) && (b.componentType === "kitchen_base_cabinet" || b.componentType === "kitchen_plinth") && a.roomId === b.roomId },
     { reason: "floor-trap tail through the shower tray", allow: (a, b) => a.system === "plumbing" && b.componentType === "shower_tray" && a.roomId === b.roomId },
     { reason: "cables inside the conduit / tray that carries their circuit", allow: (a, b) => a.componentType.includes("cable") && (b.carries ?? []).includes(a.networkId ?? "") },
+    { reason: "conduit fittings within three joints of each other on one conduit run (short legs at boards)", allow: (a, b) => a.system === "electrical" && b.system === "electrical" && /conduit|junction_box/.test(a.componentType) && /conduit|junction_box/.test(b.componentType) && threeHop(a, b) },
     { reason: "conduits and cables embedded in the RCC entrance canopy", allow: (a, b) => a.system === "electrical" && b.componentType === "entrance_canopy" },
     { reason: "cables in their trays, conduits, junction boxes and tray adaptors (pulled through)", allow: (a, b) => a.componentType.includes("cable") && (b.system === "electrical" && /tray|conduit|junction_box|adaptor|cable/.test(b.componentType)) },
-    { reason: "cables entering panels, boards and meters", allow: (a, b) => a.componentType.includes("cable") && /panel|board|meter|isolator|rccb|mcb|pillar/.test(b.componentType) },
+    { reason: "cables entering panels, boards and meters", allow: (a, b) => a.componentType.includes("cable") && /panel|board|meter|isolator|rccb|mcb|pillar|pump/.test(b.componentType) },
     { reason: "modules and meters inside their enclosure", allow: (a, b) => isMep(a) && isMep(b) && a.parentId !== undefined && a.parentId === b.parentId && (a.componentType === "mcb" || a.componentType === "energy_meter" || a.componentType === "rccb") },
   ];
 }

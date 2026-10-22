@@ -125,6 +125,24 @@ function fits(pc: PlaceCtx, part: FixedPart, m: Mount, a: number, y: number, lay
   return { depth, chase: first?.chase ?? [], q: first?.q ?? [0, 0] };
 }
 
+/** Ids of reserved chase / stub volumes (placement only; routing ignores them, the real conduits replace them). */
+const reserved = new WeakMap<MepContext, Set<string>>();
+export const reservedIds = (ctx: MepContext): ReadonlySet<string> => reserved.get(ctx) ?? new Set();
+
+/** Reserve a placed device's wall chase and void stub so later devices keep clear of them. */
+function reserve(ctx: MepContext, id: string, chase: readonly V3[], q: P2, ly: number, r: number): void {
+  const set = reserved.get(ctx) ?? reserved.set(ctx, new Set()).get(ctx)!;
+  const pts: V3[] = [...chase, [q[0], ly, q[1]]];
+  pts.slice(1).forEach((b, i) => {
+    const a = pts[i]!;
+    const rid = `STUB-${id}-${i}`;
+    set.add(rid);
+    const min = [Math.min(a[0], b[0]) - r, Math.min(a[1], b[1]) - r, Math.min(a[2], b[2]) - r];
+    const max = [Math.max(a[0], b[0]) + r, Math.max(a[1], b[1]) + r, Math.max(a[2], b[2]) + r];
+    ctx.mep.add({ id: rid, geometry: { kind: "box", size: [max[0]! - min[0]!, max[1]! - min[1]!, max[2]! - min[2]!] }, originalPosition: [(min[0]! + max[0]!) / 2, (min[1]! + max[1]!) / 2, (min[2]! + max[2]!) / 2], originalRotation: [0, 0, 0] } as unknown as ComponentRecord);
+  });
+}
+
 /** The stub out of the wall and the void point around it are clear at the conduit layer (room for the router). */
 function voidReachable(ctx: MepContext, top: V3, q: V3, r: number): boolean {
   const h = r + C.clearance + 0.015;
@@ -173,6 +191,7 @@ export function placeDevice(pc: PlaceCtx, req: DeviceRequest, candidates = spots
     if (!f) continue;
     const d = wallPart(pc.ctx, pc.group, sp.part, c.m, c.a, y, f.depth, { code: "D", name: `${pc.group.name}: ${req.name ?? sp.label}`, componentType: sp.ctype, materialId: "device_white", networkId: req.circuit, roomId: pc.ir.room.id, category: sp.layer, nominalSize: sp.part === "socket-plate" ? "6 A" : sp.part === "switch-plate" ? "6 A, 6 module" : "16 A" });
     indexDrafts(pc.ctx, pc.ctx.drafts.drafts.length - 1);
+    reserve(pc.ctx, d.id, f.chase, f.q, layerY(pc.ctx, pc.s, sp.layer), conduitR(sp.layer));
     return { id: d.id, kind: req.kind, storey: pc.s, aptId: pc.ir.room.aptId, roomId: pc.ir.room.id, layer: sp.layer, circuit: req.circuit, m: c.m, a: c.a, chase: f.chase, q: f.q, leg: [-c.m.n[0], 0, -c.m.n[2]] as V3 };
   }
   return null;
@@ -209,6 +228,7 @@ export function placeBoard(pc: PlaceCtx, kind: "db" | "cdb", networkId: string, 
     if (!ok) continue;
     const d = wallPart(pc.ctx, pc.group, part, c.m, c.a, y, f.depth, { code: kind === "db" ? "DB" : "CDB", fixed: true, name: `${pc.group.name}: ${name}`, componentType: kind === "db" ? "distribution_board" : "common_distribution_board", materialId: "enclosure_steel", networkId, roomId: pc.ir.room.id, category: "distribution", nominalSize: kind === "db" ? "12-way SPN, IP43" : "8-way TPN" });
     indexDrafts(pc.ctx, pc.ctx.drafts.drafts.length - 1);
+    for (const layer of ["lighting", "power", "submain"] as const) reserve(pc.ctx, `${d.id}-${layer}`, ports[layer]!.chase, ports[layer]!.q, layerY(pc.ctx, pc.s, layer), conduitR(layer));
     return { id: d.id, kind, storey: pc.s, aptId: pc.ir.room.aptId, roomId: pc.ir.room.id, layer: "power", circuit: networkId, m: c.m, a: c.a, chase: f.chase, q: f.q, leg: [-c.m.n[0], 0, -c.m.n[2]] as V3, ports: ports as Board["ports"] };
   }
   return null;

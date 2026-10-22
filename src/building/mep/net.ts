@@ -147,7 +147,7 @@ export class Net {
     // Runs meeting an external record at several nodes (e.g. trap -> A2 connection point ->
     // wall chase) continue through it: join them directly so the network stays traceable.
     const viaExternal = new Map<string, Edge[]>();
-    for (const n of this.nodes) if (n.record && !drafts.byId.has(n.record)) for (const k of n.edges) (viaExternal.get(n.record) ?? viaExternal.set(n.record, []).get(n.record)!).push(this.edges[k]!);
+    for (const n of this.nodes) if (n.record && (!drafts.byId.has(n.record) || n.edges.some((k) => drafts.byId.get(n.record!)!.networkId !== this.edges[k]!.spec.networkId))) for (const k of n.edges) (viaExternal.get(n.record) ?? viaExternal.set(n.record, []).get(n.record)!).push(this.edges[k]!);
     for (const list of viaExternal.values())
       for (let p = 0; p < list.length; p++)
         for (let q = p + 1; q < list.length; q++) if (list[p]!.spec.networkId === list[q]!.spec.networkId) drafts.link(list[p]!.record!, list[q]!.record!);
@@ -237,6 +237,12 @@ function fittingBasis(kind: FittingPart | "tray-node", legs: V3[], up?: V3): { e
     case "tee":
     case "jb":
     case "tray-node": {
+      // a junction box with a drop: lie flat (drum axis vertical), the drop leaves its base
+      const v = ax.findIndex((a) => Math.abs(a[1]) > 0.5);
+      if (kind === "jb" && v >= 0 && ax.length === 3) {
+        const run = ax.find((_, i) => i !== v)!;
+        return { ex: run, ey: cross(run, [0, 1, 0]) };
+      }
       for (let i = 0; i < ax.length; i++)
         for (let j = i + 1; j < ax.length; j++)
           if (dot(ax[i]!, ax[j]!) < -0.999) {

@@ -8,7 +8,7 @@
 | A0 | Project foundation, config, types, registry, stub viewer | ✅ Done |
 | A1 | Parametric structural building (foundations through roof) | ✅ Done |
 | A2 | Architecture & interiors (walls, doors, windows, rooms) | ✅ Done |
-| A3 | Plumbing & electrical systems | 🔜 Next |
+| A3 | Plumbing & electrical systems | ✅ Done (conceptual; see MEP_LAYOUT.md) |
 | A4 | Interactions & cinematic exploded assembly | Planned |
 | A5 | Visual refinement & performance optimization | Planned |
 

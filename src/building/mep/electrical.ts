@@ -27,12 +27,12 @@ import { MEP_CONFIG } from "./config";
 import { declareNetwork, endpoint, indexDrafts, MASONRY, planObstacles, unresolved, type MepContext } from "./context";
 import { FIXED_PARTS, PART_FILL, TRAY } from "./parts";
 import { Net, type RunSpec } from "./net";
-import { buildTree, routeOrtho } from "./router";
+import { buildTree, legsOk, legTo, routeOrtho } from "./router";
 import { add, placeLocal, scale, sub, type P2, type V3 } from "./geom";
 import { mountOn, segBox, wallPart, wallPoint, type Mount } from "./walls";
 import { box3 } from "./space";
 import { envelopeRegion } from "./water";
-import { ftag, latchPoint, near, placeBoard, placeCtx, placeDevice, planOfDevice, spread, type Board, type Device, type DeviceRequest, type Layer } from "./devices";
+import { reservedIds, ftag, latchPoint, near, placeBoard, placeCtx, placeDevice, planOfDevice, spread, type Board, type Device, type DeviceRequest, type Layer } from "./devices";
 import type { Group } from "./record";
 
 const C = MEP_CONFIG;
@@ -392,9 +392,12 @@ function finalCircuits(ctx: MepContext, u: Unit): void {
     const area = bboxOf([...u.region, ...terms.map((t) => ({ x0: t.q[0], x1: t.q[0], z0: t.q[1], z1: t.q[1] }))]);
     // chases of the other layer's devices pass up through this layer inside the walls
     const pins = u.devices.filter((d) => d.layer !== layer && ctx.d.slabTop(u.s) + C.layers[d.layer] > ly).flatMap((d) => d.chase.map((p) => ({ x0: p[0] - 0.03, x1: p[0] + 0.03, z0: p[2] - 0.03, z1: p[2] + 0.03 })));
-    const obstacles = [...planObstacles(ctx, area, ly, r), ...pins];
+    const obstacles = [...planObstacles(ctx, area, ly, r, { ignore: reservedIds(ctx) }), ...pins];
     const tree = buildTree({ p: [root[0], root[2]], legs: [[-u.board.m.n[0], 0, -u.board.m.n[2]]] }, terms.map((t) => ({ key: t.key, p: t.q, legs: [t.leg], ...(t.keep ? { keep: t.keep } : {}) })), obstacles, { half: r + C.clearance / 2, jointGap: 2 * 3.3 * r + 0.012, region: u.region, bendCost: 0.12 });
-    for (const k of tree.unresolved) unresolved(ctx, k, `${layer} conduit to ${k} could not be routed in the ceiling void`);
+    for (const k of tree.unresolved) {
+      unresolved(ctx, k, `${layer} conduit to ${k} could not be routed in the ceiling void (device not placed)`);
+      if (ctx.drafts.byId.has(k)) ctx.drafts.remove(k);
+    }
     // circuits per tree edge (by child node)
     const termOf = new Map(terms.map((t) => [t.key, t]));
     const kids: number[][] = tree.pts.map(() => []);
@@ -646,7 +649,15 @@ function distribution(ctx: MepContext, units: Unit[]): void {
   const xSvc = ctx.grid.xs[ctx.cfg.shaftBay.xStart]! + 1.0;
   const shaftX0 = ctx.grid.xs[ctx.cfg.shaftBay.xStart]! + (ctx.cfg.gridSpacingX - ctx.cfg.shaftOpening.width) / 2;
   const zMtr = mc.z1 - 0.39;
-  const xMtr = boardA - 0.2;
+  // meter-room tray branch: clear of the common-block water take-off below it
+  let xMtr = boardA - 0.2;
+  for (const off of [0, 0.3, -0.3, 0.6, -0.6, 0.9]) {
+    const x = boardA - 0.2 + off;
+    if (ctx.mep.free(box3(x - 0.2, x + 0.2, yT(0) - 0.004, yT(0) + 0.12, zMtr - 0.2, C.trayZ))) {
+      xMtr = x;
+      break;
+    }
+  }
   const adj = new Map<number, number[]>();
   const trayRuns: { a: number; b: number; s: number; riser: boolean; label: string }[] = [];
   const tnode = (p: V3) => {
@@ -669,7 +680,7 @@ function distribution(ctx: MepContext, units: Unit[]): void {
       x = want + off;
       if (ctx.grid.xs.some((g) => Math.abs(g - x) < 0.45)) continue;
       if (xs.some((e) => Math.abs(e.x - x) < 0.12)) continue;
-      if (!ctx.mep.free(box3(x - 0.03, x + 0.03, yT(u.s), yS(u.s) + 0.02, -4.7, -3.1))) continue;
+      if (!ctx.mep.free(box3(x - 0.08, x + 0.08, yT(u.s) - 0.05, yS(u.s) + 0.02, -4.7, -3.1), (r) => !r.id.startsWith("STUB-"))) continue;
       break;
     }
     xs.push({ x, u });
@@ -812,8 +823,10 @@ function distribution(ctx: MepContext, units: Unit[]): void {
     const ys = yS(cb.s);
     const r = C.conduit.submain.od / 2;
     const corridorStrip: PlanRect = { x0: pt[0] - 0.05, x1: pt[0] + 0.05, z0: Math.min(pt[2], zT) - 1.6, z1: Math.max(pt[2], zT) + 1.6 };
-    const obs = planObstacles(ctx, bboxOf([...u.region, corridorStrip]), ys, r);
-    const path = routeOrtho([pt[0], pt[2]], port.q, obs, { half: r + C.clearance / 2, region: [...u.region, corridorStrip], bendCost: 0.2, minLeg: 0.09 });
+    const obs = planObstacles(ctx, bboxOf([...u.region, corridorStrip]), ys, r, { ignore: reservedIds(ctx) });
+    const top = port.chase[port.chase.length - 1]!;
+    const stubLeg = legTo(port.q, [top[0], top[2]]);
+    const path = routeOrtho([pt[0], pt[2]], port.q, obs, { half: r + C.clearance / 2, region: [...u.region, corridorStrip], bendCost: 0.2, minLeg: 0.09, endsOk: (_f, last) => legsOk([stubLeg, last]) });
     if (!path) {
       unresolved(ctx, cb.network, "submain conduit from the corridor tray to the board could not be routed");
       continue;
@@ -947,7 +960,9 @@ function supplyAndEarth(ctx: MepContext, k: SupplyCtx): void {
   if (pitPos[0]) {
     const eobs = planObstacles(ctx, { x0: -30, x1: 30, z0: -25, z1: 25 }, yE, 0.02);
     const metPlan: P2 = [mW.face + 0.12, metA];
-    const ep2 = routeOrtho([pitPos[0][0], pitPos[0][2]], metPlan, eobs, { half: 0.02, minLeg: 0.2, bendCost: 0.5 });
+    // the lead must not double back over the pit interconnection
+    const pitLine = pitPos.length === 2 ? { x0: Math.min(pitPos[0]![0], pitPos[1]![0]) + 0.3, x1: Math.max(pitPos[0]![0], pitPos[1]![0]) - 0.3, z0: pitPos[0]![2] - 0.05, z1: pitPos[0]![2] + 0.05 } : null;
+    const ep2 = routeOrtho([pitPos[0][0], pitPos[0][2]], metPlan, pitLine ? [...eobs, pitLine] : eobs, { half: 0.02, minLeg: 0.2, bendCost: 0.5 });
     if (!ep2) unresolved(ctx, k.earth, "no underground route for the earth strip from the pits to the MET");
     else erun([[pitPos[0][0], yE, pitPos[0][2]], ...ep2.map(([x, z]) => [x, yE, z] as V3), [metPlan[0], k.ffl0 + 0.42, metPlan[1]]], strip(k.gEar, "earth lead (pit to MET)"), pits[0], met);
   }

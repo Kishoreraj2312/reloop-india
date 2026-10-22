@@ -5,7 +5,7 @@
  * group name to a boolean and the viewer applies it imperatively (group.visible).
  */
 
-import type { ArchCategory } from "@/building/structure";
+import { ELECTRICAL_CATEGORIES, PLUMBING_CATEGORIES, type ArchCategory, type MepCategory } from "@/building/structure";
 import type { FloorKey } from "./SceneHierarchy";
 import { FLOOR_ORDER } from "./sceneTree";
 
@@ -61,7 +61,25 @@ export interface ViewState {
   readonly floors: Readonly<Record<FloorKey, boolean>>;
   /** Ghost the building (A1/A2) so MEP services read through it. */
   readonly xray?: boolean;
+  /** MEP categories switched off (absent = on). */
+  readonly mepOff?: Readonly<Partial<Record<MepCategory, boolean>>>;
 }
+
+export const MEP_CATEGORY_LABELS: Readonly<Record<MepCategory, string>> = {
+  water: "cold water",
+  hotWater: "hot water",
+  drainage: "soil & waste",
+  vent: "vents",
+  rainwater: "rainwater",
+  distribution: "distribution",
+  lighting: "lighting",
+  power: "power",
+  containment: "cable trays",
+  earthing: "earthing",
+};
+
+/** Light fittings stay visible with the ceilings hidden while electrical lighting is shown. */
+export const lightsShown = (v: ViewState) => v.layers.electrical !== false && !v.mepOff?.lighting;
 
 export const DEFAULT_VIEW: ViewState = {
   layers: Object.fromEntries(LAYERS.map((l) => [l, true])) as Record<LayerKey, boolean>,
@@ -91,6 +109,8 @@ export function groupVisibility(v: ViewState, categories: readonly ArchCategory[
     m.set(`${f}_architecture`, true);
     m.set(`${f}_plumbing`, v.layers.plumbing !== false);
     m.set(`${f}_electrical`, v.layers.electrical !== false);
+    for (const c of PLUMBING_CATEGORIES) m.set(`${f}_plumbing_${c}`, !v.mepOff?.[c]);
+    for (const c of ELECTRICAL_CATEGORIES) m.set(`${f}_electrical_${c}`, !v.mepOff?.[c]);
     for (const c of categories) m.set(`${f}_architecture_${c}`, categoryVisible(v, c));
   }
   return m;

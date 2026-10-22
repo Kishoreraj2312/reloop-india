@@ -5,7 +5,8 @@
 
 import type { FloorKey } from "./SceneHierarchy";
 import { FLOOR_ORDER } from "./sceneTree";
-import { DEFAULT_VIEW, LAYERS, LAYER_LABELS, type ViewState } from "./viewState";
+import { DEFAULT_VIEW, LAYERS, LAYER_LABELS, MEP_CATEGORY_LABELS, type ViewState } from "./viewState";
+import { ELECTRICAL_CATEGORIES, PLUMBING_CATEGORIES } from "@/building/structure";
 
 const FLOOR_LABELS: Record<FloorKey, string> = { FDN: "Foundation", L0: "Ground", L1: "F01", L2: "F02", L3: "F03", L4: "F04", ROOF: "Roof" };
 
@@ -15,10 +16,22 @@ export function ControlsPanel({ view, onChange, onReset }: { view: ViewState; on
       <div style={{ opacity: 0.55, fontSize: 10, letterSpacing: 0.4, marginBottom: 4 }}>LAYERS</div>
       {LAYERS.map((l) => (
         <label key={l} style={row}>
-          <input type="checkbox" data-layer={l} checked={view.layers[l]} onChange={(e) => onChange({ ...view, layers: { ...view.layers, [l]: e.target.checked } })} />
+          <input type="checkbox" data-layer={l} checked={view.layers[l] !== false} onChange={(e) => onChange({ ...view, layers: { ...view.layers, [l]: e.target.checked } })} />
           {LAYER_LABELS[l]}
         </label>
       ))}
+      {([["plumbing", PLUMBING_CATEGORIES], ["electrical", ELECTRICAL_CATEGORIES]] as const).map(([sys, cats]) =>
+        view.layers[sys] ? (
+          <div key={sys} style={{ display: "flex", flexWrap: "wrap", gap: "0 8px", paddingLeft: 18, fontSize: 11 }}>
+            {cats.map((c) => (
+              <label key={c} style={row}>
+                <input type="checkbox" data-mep={c} checked={!view.mepOff?.[c]} onChange={(e) => onChange({ ...view, mepOff: { ...view.mepOff, [c]: !e.target.checked } })} />
+                {MEP_CATEGORY_LABELS[c]}
+              </label>
+            ))}
+          </div>
+        ) : null,
+      )}
       <label style={row}>
         <input type="checkbox" data-testid="xray" checked={!!view.xray} onChange={(e) => onChange({ ...view, xray: e.target.checked })} />
         MEP X-ray (ghost building)

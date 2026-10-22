@@ -23,7 +23,7 @@ import { InstancedBatch } from "./arch/InstancedBatch";
 import { createArchMaterials, disposeArchMaterials, partMaterialKey } from "./arch/archMaterials";
 import { UnitGeometries } from "./arch/unitGeometry";
 import { MEP_MATERIALS } from "@/building/mep/materials";
-import { groupVisibility, type ViewState } from "./viewState";
+import { groupVisibility, lightsShown, type ViewState } from "./viewState";
 
 interface BuildingModelProps {
   records: readonly ComponentRecord[];
@@ -88,6 +88,14 @@ export function BuildingModel({ records, onSelect, clip, view }: BuildingModelPr
     root?.traverse((o) => {
       const v = vis.get(o.name);
       if (v !== undefined) o.visible = v;
+    });
+    // Hidden ceilings keep their light fittings while electrical lighting is shown (they are circuit endpoints).
+    root?.traverse((o) => {
+      if (!o.name.endsWith("_architecture_ceilings")) return;
+      const boards = vis.get(o.name) ?? true;
+      const lights = boards || lightsShown(view);
+      o.visible = lights;
+      for (const c of o.children) c.visible = boards || (lights && String(c.userData.batchKey ?? "").includes("|fixture_light|"));
     });
     gl.shadowMap.needsUpdate = true;
     invalidate();

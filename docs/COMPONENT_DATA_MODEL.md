@@ -139,3 +139,24 @@ components (47,812 instanced, 945 plain meshes).
 Architecture categories: `exteriorWalls, partitions, openings, floors, ceilings, fixtures, stairFinishes, balconies,
 facade, roof`. The assembly level is carried by `parentId` (assemblies are records, not scene nodes) so an exploded view
 can offset whole categories by group transform and individual assemblies by instance matrix, without touching records.
+
+---
+
+## A3 — Plumbing and electrical components (`PLB`, `ELC`)
+
+IDs: `PLB|ELC-{TYPE}-{floor}-{group}-{code}{nn}`, children of a group assembly
+`PLB|ELC-{TYPE}-{floor}-{group}` (e.g. `PLB-DR-F01-A1-P012`, `ELC-CND-F02-A5-J004`).
+Plumbing TYPE: `CW` cold water, `HW` hot water, `DR` drainage, `VT` stack vents, `RW` rainwater,
+`SEW` external sewer. Electrical TYPE: `INC` supply, `PNL` panels / DBs, `SUB` submains and feeders,
+`TRY` trays, `CND` conduits, `CBL` circuit cables, `DEV` devices, `LGT` new light fittings, `EAR`
+earthing. Codes: `P` pipe, `C` conduit, `K` cable, `T` tray, `S` strip, `F` fitting, `V` valve,
+`M` meter, `R` trap, `J` junction box, `D` device.
+
+Fields added to `BuildingComponent` (optional, A3): `networkId` (network or circuit), `carries`
+(circuits in a conduit/tray), `connectedTo` (physical joints, symmetric between MEP records, may
+reference A2 endpoints), `nominalSize`, `gradient` with `flowFrom`/`flowTo` (drainage falls).
+`dependencies` point upstream for supply and downstream for drainage. Runs are `m` (route length),
+discrete items `nr`. Geometry kind `part` = catalogue unit mesh fitted to the record box
+(`mep/parts.ts`). Materials: `mep/materials.ts`, looked up with A2's through `materialLibrary.ts`.
+Scene categories: plumbing `water, hotWater, drainage, vent, rainwater`; electrical
+`distribution, lighting, power, containment, earthing`.
