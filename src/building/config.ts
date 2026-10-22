@@ -99,7 +99,7 @@ export const DEFAULT_CONFIG: BuildingConfig = {
     landingDepth: 1.2,
     flightGap: 0.3,
     waistThickness: 0.2,
-    roofAccess: false,
+    roofAccess: true, // A2: stair continues to the roof-access enclosure (see DECISIONS_AND_ASSUMPTIONS.md)
   },
 };
 

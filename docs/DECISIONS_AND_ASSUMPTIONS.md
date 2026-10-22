@@ -36,3 +36,13 @@
   Code-splitting can be added if needed.
 - No lint tool is configured (none added in A1 to avoid new dependencies). A1 browser verification was done — see
   EXECUTION_ROADMAP.md (A1 Results); the A0 note above no longer applies.
+
+## A2 Decisions (architecture)
+1. **Structural change (the only one): `stair.roofAccess` default `false` → `true`.** A2 requires a roof-access
+   enclosure and door; without a stair to the roof it would enclose nothing. A1 already parameterised and tested this
+   variant (overlap test included), so the change is one config flag. Effect: +1 flight pair and landing
+   (`STR-STAIR-F04-FL1/FL2/LND`) and the roof stair bay is split around the opening (`STR-SLAB-RF-P16` →
+   `STR-SLAB-RF-P16-W/E/S/N`); 939 → 945 members. No other structural geometry or ID changed. Tests now assert both
+   variants explicitly.
+2. **Corridor position follows the A1 stair.** The stair arrives at the south edge of its well, so the common corridor
+   runs E–W just south of gridline 3 (z −4.8…−3); see ARCHITECTURE_LAYOUT.md.

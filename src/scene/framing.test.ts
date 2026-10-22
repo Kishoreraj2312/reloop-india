@@ -114,7 +114,7 @@ describe("scene tree", () => {
     expect(fdn.assemblies[0]!.records).toHaveLength(84);
     const roof = tree.find((f) => f.floor === "ROOF")!;
     expect(roof.assemblies.map((a) => a.assembly)).toEqual(["roof"]);
-    expect(roof.assemblies[0]!.records).toHaveLength(71 + 33);
+    expect(roof.assemblies[0]!.records).toHaveLength(71 + 36); // roof beams + slab pieces (roof stair opening)
   });
 });
 

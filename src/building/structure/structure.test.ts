@@ -59,17 +59,29 @@ describe("component counts", () => {
     expect(beams.some((b) => b.floor === 0)).toBe(false);
   });
 
-  it("slab panel counts: L0 30, L1-L4 36 (stair + shaft bays split in 4), ROOF 33", () => {
+  it("default config has roof access (A2): the stair continues to the roof-access enclosure", () => {
+    expect(cfg.stair.roofAccess).toBe(true);
+  });
+
+  it("slab panel counts: L0 30, L1-L4 36 (stair + shaft bays split in 4), ROOF 36 (roof stair opening)", () => {
     const slabs = byType("slab");
     expect(slabs.filter((s) => s.floor === 0)).toHaveLength(30);
     for (let i = 1; i <= 4; i++) expect(slabs.filter((s) => s.floor === i)).toHaveLength(36);
-    expect(slabs.filter((s) => s.floor === 5)).toHaveLength(33);
-    expect(slabs).toHaveLength(207);
+    expect(slabs.filter((s) => s.floor === 5)).toHaveLength(36);
+    expect(slabs).toHaveLength(210);
   });
 
-  it("stairs: 4 storeys x (2 flights + 1 landing)", () => {
-    expect(byType("stair_flight")).toHaveLength(8);
-    expect(byType("stair_landing")).toHaveLength(4);
+  it("stairs: 5 storeys (L0->L1 .. L4->ROOF) x (2 flights + 1 landing)", () => {
+    expect(byType("stair_flight")).toHaveLength(10);
+    expect(byType("stair_landing")).toHaveLength(5);
+  });
+
+  it("without roof access: 4 stair storeys and a solid roof bay (33 roof panels, 939 members)", () => {
+    const noRoof = generateStructure({ ...cfg, stair: { ...cfg.stair, roofAccess: false } });
+    expect(byType("stair_flight", noRoof)).toHaveLength(8);
+    expect(byType("stair_landing", noRoof)).toHaveLength(4);
+    expect(byType("slab", noRoof).filter((s) => s.floor === 5)).toHaveLength(33);
+    expect(noRoof).toHaveLength(939);
   });
 
   it("roofAccess flag adds the L4->ROOF flight pair, landing and a roof stair opening", () => {
@@ -79,8 +91,8 @@ describe("component counts", () => {
     expect(byType("slab", withRoof).filter((s) => s.floor === 5)).toHaveLength(36);
   });
 
-  it("total is 939 components", () => {
-    expect(records).toHaveLength(939);
+  it("total is 945 components (939 + roof-access flight pair, landing and 3 extra roof panel pieces)", () => {
+    expect(records).toHaveLength(945);
   });
 });
 
@@ -208,10 +220,11 @@ describe("slabs and openings", () => {
     }
   });
 
-  it("stair opening L1..L4 only; shaft opening L1..ROOF; none at L0", () => {
+  it("stair opening L1..ROOF (roof access); shaft opening L1..ROOF; none at L0", () => {
     expect(openingsAtLevel(grid, 0)).toHaveLength(0);
-    for (let i = 1; i <= 4; i++) expect(openingsAtLevel(grid, i).map((o) => o.kind)).toEqual(["stair", "shaft"]);
-    expect(openingsAtLevel(grid, 5).map((o) => o.kind)).toEqual(["shaft"]);
+    for (let i = 1; i <= 5; i++) expect(openingsAtLevel(grid, i).map((o) => o.kind)).toEqual(["stair", "shaft"]);
+    const noRoof = buildGrid({ ...cfg, stair: { ...cfg.stair, roofAccess: false } });
+    expect(openingsAtLevel(noRoof, 5).map((o) => o.kind)).toEqual(["shaft"]);
   });
 
   it("per bay: panels + opening + beam footprints + joint footprints = bay area (tol 1e-6)", () => {
@@ -397,7 +410,7 @@ describe("identity and data model", () => {
   it("all records register without duplicates", () => {
     const reg = new ComponentRegistry();
     reg.registerAll(records);
-    expect(reg.size).toBe(939);
+    expect(reg.size).toBe(945);
   });
 });
 

@@ -6,20 +6,43 @@
  * them on `dispose()`.
  */
 
-import { BufferGeometry, BoxGeometry } from "three";
+import { BufferGeometry, BoxGeometry, CylinderGeometry } from "three";
 import type { GeometryDescriptor } from "@/building/structure";
 import { buildPrismGeometry } from "./prismGeometry";
 
 const f = (n: number) => (Math.abs(n) < 5e-7 ? 0 : n).toFixed(6);
 
+/** Radial segments for cylinders (pipes, rails, fittings): enough to read as round. */
+export const CYLINDER_SEGMENTS = 12;
+
 export function geometryKey(d: GeometryDescriptor): string {
-  if (d.kind === "box") return `box:${d.size.map(f).join("x")}`;
-  return `prism:${d.plane}:${f(d.extent)}:${d.profile.map((p) => `${f(p[0])},${f(p[1])}`).join(";")}`;
+  switch (d.kind) {
+    case "box":
+      return `box:${d.size.map(f).join("x")}`;
+    case "prism":
+      return `prism:${d.plane}:${f(d.extent)}:${d.profile.map((p) => `${f(p[0])},${f(p[1])}`).join(";")}`;
+    case "cylinder":
+      return `cyl:${d.axis}:${f(d.radius)}:${f(d.height)}`;
+    case "group":
+      throw new Error("group descriptors have no geometry");
+  }
 }
 
 function buildGeometry(d: GeometryDescriptor): BufferGeometry {
-  if (d.kind === "box") return new BoxGeometry(d.size[0], d.size[1], d.size[2]);
-  return buildPrismGeometry(d);
+  switch (d.kind) {
+    case "box":
+      return new BoxGeometry(d.size[0], d.size[1], d.size[2]);
+    case "prism":
+      return buildPrismGeometry(d);
+    case "cylinder": {
+      const g = new CylinderGeometry(d.radius, d.radius, d.height, CYLINDER_SEGMENTS);
+      if (d.axis === "x") g.rotateZ(Math.PI / 2);
+      if (d.axis === "z") g.rotateX(Math.PI / 2);
+      return g;
+    }
+    case "group":
+      throw new Error("group descriptors have no geometry");
+  }
 }
 
 export class GeometryPool {

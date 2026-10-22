@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:browser": "node scripts/browser/verify.mjs"
+    "verify:browser": "node scripts/browser/verify.mjs",
+    "plans": "vite-node scripts/plans/drawPlans.ts"
   },
   "dependencies": {
     "@react-three/fiber": "^9.1.2",

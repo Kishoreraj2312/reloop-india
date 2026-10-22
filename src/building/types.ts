@@ -45,7 +45,7 @@ export interface BuildingComponent {
 
   readonly dimensions: ComponentDimensions;
   readonly quantity: number;               // computed volume/area/length/count
-  readonly unit: "m" | "m2" | "m3" | "pcs" | "kg";
+  readonly unit: "m" | "m2" | "m3" | "pcs" | "nr" | "kg";
 
   readonly condition: ComponentCondition;
   readonly recoveryRoute: RecoveryRoute;
@@ -53,6 +53,11 @@ export interface BuildingComponent {
 
   readonly parentId?: string;
   readonly dependencies: readonly string[];
+
+  // Architecture (A2): assembly family and plan location, where relevant
+  readonly assemblyType?: string;          // e.g. "window", "wall", "kitchen"
+  readonly apartmentId?: string;           // "A1".."A6", "CM" for common areas
+  readonly roomId?: string;                // e.g. "A3-LIV", "CM-COR"
 
   readonly originalPosition: readonly [number, number, number];
   readonly originalRotation: readonly [number, number, number];

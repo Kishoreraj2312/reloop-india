@@ -43,7 +43,7 @@ export function getStructure(cfg: BuildingConfig): readonly ComponentRecord[] {
   return records;
 }
 
-export { buildGrid } from "./grid";
+export { buildGrid, nodeLabel, type GridModel, type Level } from "./grid";
 export { deriveStair } from "./stairs";
 export { openingsAtLevel, openingOf } from "./openings";
 export { STRUCTURAL_MATERIAL } from "./grid";
