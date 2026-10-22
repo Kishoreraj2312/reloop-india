@@ -46,7 +46,19 @@ export interface GroupDescriptor {
   readonly size: Vec3;
 }
 
-export type GeometryDescriptor = BoxDescriptor | PrismDescriptor | CylinderDescriptor | GroupDescriptor;
+/**
+ * A3: a catalogue part (pipe fitting, valve, device, equipment) drawn from a shared unit
+ * mesh fitted to the box `size` (centred on the origin, then rotated). Bounds and overlap
+ * checks treat it as that box; `fill` is the solid fraction of the box (volume estimate).
+ */
+export interface PartDescriptor {
+  readonly kind: "part";
+  readonly part: string;
+  readonly size: Vec3;
+  readonly fill: number;
+}
+
+export type GeometryDescriptor = BoxDescriptor | PrismDescriptor | CylinderDescriptor | GroupDescriptor | PartDescriptor;
 /** Descriptors that produce a mesh. */
 export type SolidDescriptor = Exclude<GeometryDescriptor, GroupDescriptor>;
 
@@ -69,7 +81,15 @@ export const ARCH_CATEGORIES = [
 ] as const;
 export type ArchCategory = (typeof ARCH_CATEGORIES)[number];
 
-export type AssemblyName = StructureAssemblyName | ArchCategory;
+/** Assembly categories inside the plumbing and electrical systems (A3). */
+export const PLUMBING_CATEGORIES = ["water", "hotWater", "drainage", "vent", "rainwater"] as const;
+export const ELECTRICAL_CATEGORIES = ["distribution", "lighting", "power", "containment", "earthing"] as const;
+export type PlumbingCategory = (typeof PLUMBING_CATEGORIES)[number];
+export type ElectricalCategory = (typeof ELECTRICAL_CATEGORIES)[number];
+export type MepCategory = PlumbingCategory | ElectricalCategory;
+export const MEP_CATEGORIES: readonly MepCategory[] = [...PLUMBING_CATEGORIES, ...ELECTRICAL_CATEGORIES];
+
+export type AssemblyName = StructureAssemblyName | ArchCategory | MepCategory;
 
 /** A BuildingComponent plus what the renderer needs. Produced once, consumed by registry and viewer. */
 export interface ComponentRecord extends BuildingComponent {
@@ -96,6 +116,8 @@ export function descriptorVolume(g: GeometryDescriptor): number {
       return polygonArea(g.profile) * g.extent;
     case "cylinder":
       return Math.PI * g.radius * g.radius * g.height;
+    case "part":
+      return g.size[0] * g.size[1] * g.size[2] * g.fill;
     case "group":
       return 0;
   }

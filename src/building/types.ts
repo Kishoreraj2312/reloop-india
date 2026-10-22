@@ -62,6 +62,18 @@ export interface BuildingComponent {
   readonly originalPosition: readonly [number, number, number];
   readonly originalRotation: readonly [number, number, number];
 
+  // MEP (A3): network membership and explicit connectivity, where relevant
+  readonly networkId?: string;             // e.g. "PLB-NET-CW-F01-A1", "ELC-NET-CIR-F01-A1-L1"
+  /** Other networks this component carries (conduits/trays: the circuits whose cables run in them). */
+  readonly carries?: readonly string[];
+  /** Components this one physically joins (both directions; may include A2 endpoints). */
+  readonly connectedTo?: readonly string[];
+  readonly nominalSize?: string;           // "DN25", "110 mm", "2.5 sq mm", "300 x 75"
+  /** Fall of a drainage run (1/60 = 1 in 60), downstream from `flowFrom` to `flowTo`. */
+  readonly gradient?: number;
+  readonly flowFrom?: readonly [number, number, number];
+  readonly flowTo?: readonly [number, number, number];
+
   // Reserved for B-phase (material passport)
   readonly densityKgM3?: number;
   readonly estimatedMassKg?: number;

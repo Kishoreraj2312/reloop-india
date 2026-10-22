@@ -14,6 +14,7 @@ function halfExtents(g: ComponentRecord["geometry"]): [number, number, number] |
   switch (g.kind) {
     case "box":
     case "group":
+    case "part":
       return [g.size[0] / 2, g.size[1] / 2, g.size[2] / 2];
     case "cylinder": {
       const r = g.radius;

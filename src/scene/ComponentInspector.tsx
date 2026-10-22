@@ -5,7 +5,7 @@
  */
 
 import { registry } from "@/building/registry";
-import { archMaterial, hasArchMaterial } from "@/building/architecture/materials";
+import { hasMaterial, materialById } from "@/building/materialLibrary";
 import { STRUCTURAL_MATERIAL } from "@/building/structure";
 
 const FLOOR_NAMES: Record<number, string> = { [-1]: "Foundation", 0: "Ground (G)", 1: "F01", 2: "F02", 3: "F03", 4: "F04", 5: "Roof" };
@@ -16,7 +16,7 @@ function fmt(n: number): string {
 
 export function ComponentInspector({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string | null) => void }) {
   const c = selectedId ? registry.getById(selectedId) : undefined;
-  const material = c ? (hasArchMaterial(c.materialId) ? archMaterial(c.materialId).name : c.materialId === STRUCTURAL_MATERIAL.id ? STRUCTURAL_MATERIAL.name : c.materialId) : "";
+  const material = c ? (hasMaterial(c.materialId) ? materialById(c.materialId).name : c.materialId === STRUCTURAL_MATERIAL.id ? STRUCTURAL_MATERIAL.name : c.materialId) : "";
   const parent = c?.parentId ? registry.getById(c.parentId) : undefined;
   const children = c?.componentType.endsWith("_assembly") ? registry.getChildren(c.id).length : 0;
   const dims = c ? Object.entries(c.dimensions).filter(([, v]) => v !== undefined) : [];

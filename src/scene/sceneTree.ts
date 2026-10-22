@@ -1,18 +1,20 @@
 /**
  * Pure grouping of ComponentRecords into the scene hierarchy:
- * Floor > System (structure | architecture) > Assembly category > Component.
+ * Floor > System (structure | architecture | plumbing | electrical) > Assembly category > Component.
  */
 
 import { LEVEL_NAMES } from "@/building/config";
 import type { BuildingSystem } from "@/building/types";
-import { ARCH_CATEGORIES, ASSEMBLY_NAMES, type AssemblyName, type ComponentRecord } from "@/building/structure";
+import { ARCH_CATEGORIES, ASSEMBLY_NAMES, ELECTRICAL_CATEGORIES, PLUMBING_CATEGORIES, type AssemblyName, type ComponentRecord } from "@/building/structure";
 import type { FloorKey } from "./SceneHierarchy";
 
 export const FLOOR_ORDER: readonly FloorKey[] = ["FDN", ...LEVEL_NAMES];
-const SYSTEM_ORDER: readonly BuildingSystem[] = ["structure", "architecture"];
+const SYSTEM_ORDER: readonly BuildingSystem[] = ["structure", "architecture", "plumbing", "electrical"];
 const ASSEMBLY_ORDER: Readonly<Record<string, readonly AssemblyName[]>> = {
   structure: ASSEMBLY_NAMES,
   architecture: ARCH_CATEGORIES,
+  plumbing: PLUMBING_CATEGORIES,
+  electrical: ELECTRICAL_CATEGORIES,
 };
 
 /** A0 floor index (-1 foundation, 0..4, 5 roof) -> floor group key. */

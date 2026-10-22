@@ -1,24 +1,27 @@
 /**
- * Instancing plan for architecture records (pure; no GPU objects).
+ * Instancing plan for architecture and MEP records (pure; no GPU objects).
  *
- * Records are grouped by floor > category > material > unit shape. Each batch becomes one
- * InstancedMesh over a shared unit geometry (1 m box, or unit cylinder along X/Y/Z); the
- * instance matrix = translate(originalPosition) * rotate(originalRotation) * scale(size).
+ * Records are grouped by floor > system > category > material > unit shape. Each batch becomes
+ * one InstancedMesh over a shared unit geometry (1 m box, unit cylinder along X/Y/Z, or an MEP
+ * catalogue part fitted to the unit cube); the instance matrix =
+ * translate(originalPosition) * rotate(originalRotation) * scale(size).
  * `ids[i]` is the component ID of instance i — the instanceId -> componentId map used for
  * picking and highlighting. Records are never modified.
  */
 
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
-import type { ArchCategory, ComponentRecord } from "@/building/structure";
+import type { ArchCategory, ComponentRecord, MepCategory } from "@/building/structure";
+import type { BuildingSystem } from "@/building/types";
 import { floorKeyOf } from "../sceneTree";
 import type { FloorKey } from "../SceneHierarchy";
 
-export type UnitShape = "box" | "cyl-x" | "cyl-y" | "cyl-z";
+export type UnitShape = "box" | "cyl-x" | "cyl-y" | "cyl-z" | `part:${string}`;
 
 export interface Batch {
   readonly key: string;
   readonly floor: FloorKey;
-  readonly category: ArchCategory;
+  readonly system: BuildingSystem;
+  readonly category: ArchCategory | MepCategory;
   readonly materialId: string;
   readonly shape: UnitShape;
   readonly ids: readonly string[];
@@ -33,6 +36,7 @@ export function shapeOf(r: ComponentRecord): UnitShape {
   const g = r.geometry;
   if (g.kind === "box") return "box";
   if (g.kind === "cylinder") return `cyl-${g.axis}`;
+  if (g.kind === "part") return `part:${g.part}`;
   throw new Error(`${r.id}: geometry ${g.kind} is not instanceable`);
 }
 
@@ -42,7 +46,7 @@ export function instanceMatrix(r: ComponentRecord, out = new Matrix4()): Matrix4
   const pos = new Vector3(...r.originalPosition);
   const q = new Quaternion().setFromEuler(new Euler(...r.originalRotation));
   let scale: Vector3;
-  if (g.kind === "box") scale = new Vector3(...g.size);
+  if (g.kind === "box" || g.kind === "part") scale = new Vector3(...g.size);
   else if (g.kind === "cylinder") {
     scale = new Vector3(g.radius, g.height, g.radius); // unit cylinder: radius 1, height 1 along local Y
     if (g.axis === "x") q.multiply(Y_TO_X);
@@ -52,21 +56,21 @@ export function instanceMatrix(r: ComponentRecord, out = new Matrix4()): Matrix4
 }
 
 export function buildBatches(records: readonly ComponentRecord[]): Batch[] {
-  const groups = new Map<string, { floor: FloorKey; category: ArchCategory; materialId: string; shape: UnitShape; recs: ComponentRecord[] }>();
+  const groups = new Map<string, { floor: FloorKey; system: BuildingSystem; category: ArchCategory | MepCategory; materialId: string; shape: UnitShape; recs: ComponentRecord[] }>();
   for (const r of records) {
-    if (r.system !== "architecture" || r.geometry.kind === "group") continue;
+    if (r.system === "structure" || r.geometry.kind === "group") continue;
     const floor = floorKeyOf(r.floor);
     const shape = shapeOf(r);
-    const category = r.assembly as ArchCategory;
-    const key = `${floor}|${category}|${r.materialId}|${shape}`;
+    const category = r.assembly as ArchCategory | MepCategory;
+    const key = r.system === "architecture" ? `${floor}|${category}|${r.materialId}|${shape}` : `${floor}|${r.system}|${category}|${r.materialId}|${shape}`;
     let g = groups.get(key);
-    if (!g) groups.set(key, (g = { floor, category, materialId: r.materialId, shape, recs: [] }));
+    if (!g) groups.set(key, (g = { floor, system: r.system, category, materialId: r.materialId, shape, recs: [] }));
     g.recs.push(r);
   }
   const m = new Matrix4();
   return [...groups.entries()].map(([key, g]) => {
     const matrices = new Float32Array(g.recs.length * 16);
     g.recs.forEach((r, i) => instanceMatrix(r, m).toArray(matrices, i * 16));
-    return { key, floor: g.floor, category: g.category, materialId: g.materialId, shape: g.shape, ids: g.recs.map((r) => r.id), matrices };
+    return { key, floor: g.floor, system: g.system, category: g.category, materialId: g.materialId, shape: g.shape, ids: g.recs.map((r) => r.id), matrices };
   });
 }

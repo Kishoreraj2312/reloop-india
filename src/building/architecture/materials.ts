@@ -24,7 +24,18 @@ export type Substance =
   | "sanitary_ceramic"
   | "pvc"
   | "bitumen_membrane"
-  | "appliance_mixed";
+  | "appliance_mixed"
+  // A3 (MEP library, mep/materials.ts)
+  | "cpvc"
+  | "upvc"
+  | "galvanised_steel"
+  | "hdpe"
+  | "brass"
+  | "cast_iron"
+  | "copper_conductor"
+  | "rigid_pvc_conduit"
+  | "electrical_assembly"
+  | "mechanical_assembly";
 
 export interface MaterialRender {
   readonly color: number;

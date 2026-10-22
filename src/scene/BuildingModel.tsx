@@ -2,7 +2,8 @@
  * BuildingModel — renders generated ComponentRecords through the scene hierarchy:
  * Building > Floor > System > Assembly category > Component.
  *   structure:    one mesh per member (ComponentMesh)
- *   architecture: instanced batches per category, material and unit shape (InstancedBatch)
+ *   architecture, plumbing, electrical: instanced batches per category, material and unit
+ *                 shape (InstancedBatch); MEP parts use vertex-coloured unit meshes
  * Visibility (layers, isolation, ceilings) is applied imperatively to the named groups, so
  * toggles never re-render the component tree.
  */
@@ -10,7 +11,7 @@
 import { useEffect, useMemo } from "react";
 import { DoubleSide, FrontSide, Plane, Vector3, type Group } from "three";
 import { useThree } from "@react-three/fiber";
-import { ARCH_CATEGORIES, type ArchCategory, type ComponentRecord } from "@/building/structure";
+import { ARCH_CATEGORIES, type ComponentRecord } from "@/building/structure";
 import { AssemblyGroup, BuildingGroup, FloorGroup, SystemGroup } from "./SceneHierarchy";
 import { ComponentMesh } from "./ComponentMesh";
 import { GeometryPool } from "./geometryPool";
@@ -19,7 +20,7 @@ import { buildSceneTree } from "./sceneTree";
 import type { ClipSpec } from "./framing";
 import { buildBatches } from "./arch/batches";
 import { InstancedBatch } from "./arch/InstancedBatch";
-import { createArchMaterials, disposeArchMaterials } from "./arch/archMaterials";
+import { createArchMaterials, disposeArchMaterials, partMaterialKey } from "./arch/archMaterials";
 import { UnitGeometries } from "./arch/unitGeometry";
 import { groupVisibility, type ViewState } from "./viewState";
 
@@ -40,7 +41,7 @@ export function BuildingModel({ records, onSelect, clip, view }: BuildingModelPr
     const m = new Map<string, ReturnType<typeof buildBatches>>();
     for (const f of tree)
       for (const s of f.systems)
-        if (s.system === "architecture") for (const a of s.assemblies) m.set(`${f.floor}|${a.assembly}`, buildBatches(a.records));
+        if (s.system !== "structure") for (const a of s.assemblies) m.set(`${f.floor}|${s.system}|${a.assembly}`, buildBatches(a.records));
     return m;
   }, [tree]);
   const pool = useMemo(() => new GeometryPool(), []);
@@ -100,8 +101,14 @@ export function BuildingModel({ records, onSelect, clip, view }: BuildingModelPr
                     ? a.records.map((r) => (
                         <ComponentMesh key={r.id} record={r} geometry={pool.get(r.geometry)} material={materials[memberKind(r)]} onSelect={onSelect} />
                       ))
-                    : (batches.get(`${floor.floor}|${a.assembly as ArchCategory}`) ?? []).map((b) => (
-                        <InstancedBatch key={b.key} batch={b} geometry={units.get(b.shape)} material={archMaterials.get(b.materialId)!} onSelect={onSelect} />
+                    : (batches.get(`${floor.floor}|${sys.system}|${a.assembly}`) ?? []).map((b) => (
+                        <InstancedBatch
+                          key={b.key}
+                          batch={b}
+                          geometry={units.get(b.shape, b.materialId, b.system !== "architecture")}
+                          material={archMaterials.get(b.shape.startsWith("part:") ? partMaterialKey(b.materialId) : b.materialId)!}
+                          onSelect={onSelect}
+                        />
                       ))}
                 </AssemblyGroup>
               ))}

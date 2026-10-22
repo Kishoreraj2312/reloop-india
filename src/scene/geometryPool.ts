@@ -24,7 +24,8 @@ export function geometryKey(d: GeometryDescriptor): string {
     case "cylinder":
       return `cyl:${d.axis}:${f(d.radius)}:${f(d.height)}`;
     case "group":
-      throw new Error("group descriptors have no geometry");
+    case "part":
+      throw new Error(`${d.kind} descriptors are not pooled (parts are instanced, scene/mep)`);
   }
 }
 
@@ -41,7 +42,8 @@ function buildGeometry(d: GeometryDescriptor): BufferGeometry {
       return g;
     }
     case "group":
-      throw new Error("group descriptors have no geometry");
+    case "part":
+      throw new Error(`${d.kind} descriptors are not pooled (parts are instanced, scene/mep)`);
   }
 }
 
