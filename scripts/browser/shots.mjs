@@ -22,7 +22,13 @@ for (const s of shots) {
     window.__reloop.setViewState({ layers: Object.fromEntries(L.map(l => [l, !hide.includes(l)])), isolate: ${JSON.stringify(st.isolate ?? null)}, ceilingsInIsolation: ${JSON.stringify(st.ceilings ?? false)}, floors });
     window.__reloop.select(${JSON.stringify(s.select ?? null)}); })()`);
   await b.sleep(300);
-  if (s.pos) await b.evaluate(`window.__reloop.setView(${JSON.stringify(s.pos)}, ${JSON.stringify(s.target)})`);
+  if (s.focus) {
+    // Frame an assembly from its record envelope: camera along `dir` at `dist` x its size.
+    await b.evaluate(`(() => { const r = window.__reloop.records.find((x) => x.id === ${JSON.stringify(s.focus)});
+      const c = r.originalPosition; const sz = r.geometry.size; const m = Math.max(sz[0], sz[2], 1.5);
+      const d = ${JSON.stringify(s.dir ?? [1, 1.2, 1])}; const l = Math.hypot(...d); const k = (${s.dist ?? 1.6}) * m / l;
+      window.__reloop.setView([c[0] + d[0] * k, c[1] + d[1] * k, c[2] + d[2] * k], [c[0], c[1] - sz[1] * 0.15, c[2]]); })()`);
+  } else if (s.pos) await b.evaluate(`window.__reloop.setView(${JSON.stringify(s.pos)}, ${JSON.stringify(s.target)})`);
   await b.sleep(s.wait ?? 900);
   await b.shot(`${out}/${s.name}.png`);
   console.log(`shot ${s.name}`);

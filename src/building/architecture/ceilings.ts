@@ -34,12 +34,14 @@ function panels(r: PlanRect, max: number): PlanRect[] {
 export function ceilingLayout(ir: InteriorRoom, ctx: InteriorContext): { field: PlanRect[]; cove: PlanRect[]; fieldRect: PlanRect | null } {
   const c = ctx.arch.ceiling;
   const cutters = ctx.cols.map((k) => grow(k, c.shadowGap));
-  const cove = COVE_ROOMS.has(ir.room.type) && ir.clears.length === 1;
-  if (!cove) return { field: ir.clears.flatMap((r) => subtractAll(inset(r, c.shadowGap), cutters)), cove: [], fieldRect: null };
-  const outer = inset(ir.clears[0]!, c.shadowGap);
-  const fieldRect = inset(ir.clears[0]!, c.shadowGap + c.cove.width);
+  if (!COVE_ROOMS.has(ir.room.type)) return { field: ir.clears.flatMap((r) => subtractAll(inset(r, c.shadowGap), cutters)), cove: [], fieldRect: null };
+  // Cove around the main (largest) rectangle; any secondary rectangle (a door lobby) gets a flat field.
+  const main = ir.clears.reduce((a, b) => ((b.x1 - b.x0) * (b.z1 - b.z0) > (a.x1 - a.x0) * (a.z1 - a.z0) ? b : a));
+  const others = ir.clears.filter((r) => r !== main).flatMap((r) => subtractAll(inset(r, c.shadowGap), cutters));
+  const outer = inset(main, c.shadowGap);
+  const fieldRect = inset(main, c.shadowGap + c.cove.width);
   return {
-    field: subtractAll(fieldRect, cutters),
+    field: [...subtractAll(fieldRect, cutters), ...others],
     cove: subtractAll(outer, [fieldRect, ...cutters]),
     fieldRect,
   };

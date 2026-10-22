@@ -116,9 +116,11 @@ export type FloorKind = "ground" | "typical" | "top";
 const FRONT_ROOMS: readonly RoomDef[] = [
   { code: "LIV", type: "living", name: "Living", rects: [[0, 4.8, 0, 6.0]] },
   { code: "BED2", type: "bedroom", name: "Bedroom 2", rects: [[4.8, 8.4, 0, 4.2]] },
-  { code: "BED1", type: "bedroom", name: "Master bedroom", rects: [[8.4, 12, 0, 4.2]] },
+  // Master bedroom: main room plus a small door lobby beside the en-suite.
+  { code: "BED1", type: "bedroom", name: "Master bedroom", rects: [[8.4, 12, 0, 3.75], [8.4, 9.9, 3.75, 4.2]] },
   { code: "PAS", type: "passage", name: "Passage", rects: [[4.8, 9.9, 4.2, 6.0]] },
-  { code: "BATH1", type: "bathroom", name: "En-suite bath", rects: [[9.9, 12, 4.2, 6.0]] },
+  // En-suite 2.1 x 2.25: room for shower, WC and basin with 0.6 m clear zones.
+  { code: "BATH1", type: "bathroom", name: "En-suite bath", rects: [[9.9, 12, 3.75, 6.0]] },
 ];
 
 const FRONT_DOORS: readonly DoorDef[] = [

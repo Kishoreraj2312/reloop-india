@@ -7,7 +7,7 @@ import type { BuildingConfig } from "../config";
 import { ARCH_CONFIG, type ArchitectureConfig } from "./config";
 import { boundaryAt, clearRect, floorBoundaries, wallFootprint, type Boundary } from "./boundaries";
 import type { FloorPlan, PlanDoor, PlanRoom } from "./plan";
-import { contains, EPS, overlaps, rectArea, rectD, rectW, totalArea, type PlanRect } from "./rect";
+import { contains, EPS, overlaps, rectArea, rectD, rectW, subtractAll, totalArea, type PlanRect } from "./rect";
 import { arcBox, arcHitsRect, arcsOverlap, swingArcs, type SwingArc } from "./swing";
 import { buildGrid } from "../structure";
 
@@ -92,6 +92,12 @@ export function checkConnectivity(plan: FloorPlan): string[] {
   return errs;
 }
 
+/** Exact clear area of a room: its boundary rects minus every wall footprint (disjoint rects). */
+export function roomClearArea(room: PlanRoom, bounds: readonly Boundary[], cfg: BuildingConfig): PlanRect[] {
+  const walls = bounds.filter((b) => b.kind !== "open").map((b) => wallFootprint(b, cfg));
+  return room.rects.flatMap((r) => subtractAll(r, walls));
+}
+
 /** Clear rectangles (finished faces) of a room's boundary rects. */
 export function roomClearRects(room: PlanRoom, bounds: readonly Boundary[], cfg: BuildingConfig): PlanRect[] {
   return room.rects.map((r) => clearRect(r, room.id, bounds, cfg));
@@ -154,9 +160,10 @@ export function checkSwings(plan: FloorPlan, cfg: BuildingConfig, arch: Architec
       errs.push(`${d.key}: swing room ${d.swingInto} missing`);
       continue;
     }
-    const clears = roomClearRects(room, bounds, cfg);
+    const area = roomClearArea(room, bounds, cfg);
     for (const a of arcs.get(d.key)!) {
-      if (!clears.some((c) => contains(c, arcBox(a), 1e-6))) errs.push(`${d.key}: swing leaves ${room.id}`);
+      // The swept square must lie inside the room's clear area (walls excluded exactly).
+      if (subtractAll(arcBox(a), area, false, 1e-6).some((r) => rectArea(r) > 1e-8)) errs.push(`${d.key}: swing leaves ${room.id}`);
       for (const c of cols) if (arcHitsRect(a, c)) errs.push(`${d.key}: swing hits a column`);
     }
   }

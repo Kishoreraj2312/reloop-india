@@ -3,8 +3,8 @@
  *
  * generateArchitecture: BuildingConfig -> ComponentRecord[] (pure, deterministic), from the
  * same plan model the validators check. Output order per storey: walls, openings,
- * balconies, floor finishes, wet-wall tiling, ceilings, ceiling fittings; then facade,
- * entrance, roof and stair finishes.
+ * balconies, floor finishes, wet-wall tiling, ceilings, ceiling fittings, kitchens,
+ * bathrooms/utilities; then facade, entrance, roof and stair finishes.
  */
 
 import { validateConfig, type BuildingConfig } from "../config";
@@ -22,10 +22,14 @@ import { generateFloors } from "./floors";
 import { ceilingFixtures, generateCeilings } from "./ceilings";
 import { generateWetTiling } from "./tiling";
 import { generateStairFinishes } from "./stairFinish";
+import { generateKitchens } from "./kitchen";
+import { generateBathrooms, type Clearance } from "./bathroom";
 
 export interface StoreyBuild {
   readonly plan: FloorPlan;
   readonly walls: readonly WallBuild[];
+  /** Clear zones in front of WCs, basins, showers and washers (validated, not rendered). */
+  readonly clearances: readonly Clearance[];
 }
 
 export interface ArchitectureModel {
@@ -44,7 +48,9 @@ export function generateArchitectureModel(cfg: BuildingConfig, arch: Architectur
     records.push(...w.records, ...generateOpenings(plan, w.walls, cfg, arch), ...generateBalconies(plan, cfg, arch));
     const ictx = interiorContext(plan, cfg, arch);
     records.push(...generateFloors(ictx), ...generateWetTiling(ictx), ...generateCeilings(ictx), ...ceilingFixtures(ictx));
-    storeys.push({ plan, walls: w.walls });
+    const baths = generateBathrooms(ictx);
+    records.push(...generateKitchens(ictx), ...baths.records);
+    storeys.push({ plan, walls: w.walls, clearances: baths.clearances });
   }
   const ground = storeys[0]!.plan;
   const typical = storeys[Math.min(1, storeys.length - 1)]!.plan;

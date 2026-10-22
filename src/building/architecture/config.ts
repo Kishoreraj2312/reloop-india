@@ -154,6 +154,41 @@ export interface ArchitectureConfig {
     readonly downlightRadius: number;
     readonly surfaceLight: { readonly radius: number; readonly height: number };
   };
+  /** Modular kitchen (heights above FFL; depths from the wall face). */
+  readonly kitchen: {
+    readonly module: number;
+    readonly counterDepth: number;
+    readonly carcassDepth: number;
+    readonly front: number; // shutter / drawer-front thickness
+    readonly frontGap: number;
+    readonly plinth: number; // toe-kick height
+    readonly plinthSetback: number;
+    readonly counterTop: number; // finished worktop height
+    readonly counterThickness: number;
+    readonly drawer: number; // drawer-front height
+    readonly sink: { readonly width: number; readonly depth: number; readonly bowl: number; readonly wall: number; readonly front: number };
+    readonly sinkBaseTop: number; // sink base unit carcass top (clears the bowl)
+    readonly serviceVoid: number; // behind the sink base, for the connection points
+    readonly wallUnit: { readonly bottom: number; readonly top: number; readonly depth: number };
+    readonly fridge: { readonly width: number; readonly depth: number; readonly height: number };
+    readonly hob: { readonly width: number; readonly depth: number; readonly height: number };
+    readonly hood: { readonly bottom: number; readonly canopy: number; readonly depth: number; readonly flue: number };
+    readonly minRun: number;
+    readonly aisle: number; // minimum clear aisle between parallel runs
+  };
+  /** Bathroom fittings (heights above FFL). */
+  readonly bathroom: {
+    readonly tray: { readonly size: number; readonly height: number };
+    readonly screen: { readonly height: number; readonly thickness: number };
+    readonly wc: { readonly width: number; readonly depth: number; readonly height: number; readonly zone: number; readonly cisternDepth: number; readonly cisternTop: number };
+    readonly basin: { readonly width: number; readonly depth: number; readonly top: number; readonly height: number };
+    readonly mirror: { readonly width: number; readonly height: number; readonly bottom: number; readonly thickness: number };
+    readonly clearance: number; // clear zone in front of WC, basin and shower entry
+    readonly rail: { readonly length: number; readonly height: number; readonly radius: number; readonly standoff: number };
+    readonly shower: { readonly headHeight: number; readonly arm: number; readonly mixerHeight: number };
+    readonly washer: { readonly width: number; readonly depth: number; readonly height: number };
+    readonly drain: number; // floor-drain grating size
+  };
 }
 
 export const ARCH_CONFIG: ArchitectureConfig = {
@@ -249,6 +284,39 @@ export const ARCH_CONFIG: ArchitectureConfig = {
   stairFinish: { tread: 0.05, riser: 0.015, balustradeHeight: 0.9, baluster: 0.02, handrailRadius: 0.025, dadoHeight: 1.2 },
   minClear: { bedroom: 2.8, kitchen: 2.0, bathroom: { min: 1.2, max: 1.8 }, corridor: 1.2 },
   fixtures: { downlightRadius: 0.06, surfaceLight: { radius: 0.18, height: 0.06 } },
+  kitchen: {
+    module: 0.6,
+    counterDepth: 0.6,
+    carcassDepth: 0.56,
+    front: 0.018,
+    frontGap: 0.003,
+    plinth: 0.1,
+    plinthSetback: 0.05,
+    counterTop: 0.9,
+    counterThickness: 0.03,
+    drawer: 0.15,
+    sink: { width: 0.5, depth: 0.4, bowl: 0.2, wall: 0.012, front: 0.09 },
+    sinkBaseTop: 0.66,
+    serviceVoid: 0.06,
+    wallUnit: { bottom: 1.5, top: 2.2, depth: 0.35 },
+    fridge: { width: 0.7, depth: 0.66, height: 1.8 },
+    hob: { width: 0.58, depth: 0.5, height: 0.02 },
+    hood: { bottom: 1.55, canopy: 0.15, depth: 0.45, flue: 0.25 },
+    minRun: 1.2,
+    aisle: 1.0,
+  },
+  bathroom: {
+    tray: { size: 0.9, height: 0.04 },
+    screen: { height: 1.96, thickness: 0.008 },
+    wc: { width: 0.38, depth: 0.55, height: 0.4, zone: 0.8, cisternDepth: 0.18, cisternTop: 0.8 },
+    basin: { width: 0.5, depth: 0.42, top: 0.86, height: 0.16 },
+    mirror: { width: 0.5, height: 0.7, bottom: 1.15, thickness: 0.006 },
+    clearance: 0.6,
+    rail: { length: 0.6, height: 1.2, radius: 0.012, standoff: 0.06 },
+    shower: { headHeight: 2.0, arm: 0.3, mixerHeight: 1.1 },
+    washer: { width: 0.6, depth: 0.6, height: 0.85 },
+    drain: 0.1,
+  },
 };
 
 // ── Derived datums (all elevations come from the building config) ────────────
