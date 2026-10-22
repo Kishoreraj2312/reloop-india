@@ -72,4 +72,11 @@ describe("ComponentRegistry", () => {
     expect(reg.getChildren("STR-COL-G-A1")).toHaveLength(1);
     expect(reg.getParent("STR-BM-F01-X-A1")?.id).toBe("STR-COL-G-A1");
   });
+
+  it("unlinks a mesh", () => {
+    reg.register(makeComponent("STR-COL-G-A1"));
+    reg.linkMesh("m1", "STR-COL-G-A1");
+    reg.unlinkMesh("m1");
+    expect(reg.getIdByMesh("m1")).toBeUndefined();
+  });
 });

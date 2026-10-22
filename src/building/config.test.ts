@@ -65,4 +65,23 @@ describe("BuildingConfig validation", () => {
     const errors = validateConfig(bad);
     expect(errors.some((e) => e.field === "stair")).toBe(true);
   });
+  it("detects an opening that reaches the bay beams", () => {
+    const bad = { ...DEFAULT_CONFIG, shaftOpening: { width: 5.9, length: 1.5 } };
+    expect(validateConfig(bad).some((e) => e.field === "shaftOpening")).toBe(true);
+  });
+
+  it("detects an opening that intersects column corners", () => {
+    const bad = { ...DEFAULT_CONFIG, shaftOpening: { width: 5.6, length: 5.6 } };
+    expect(validateConfig(bad).some((e) => e.message.includes("column corners"))).toBe(true);
+  });
+
+  it("detects a stair that does not fit its opening", () => {
+    const bad = { ...DEFAULT_CONFIG, stairOpening: { width: 2.5, length: 5.4 } };
+    expect(validateConfig(bad).some((e) => e.field === "stair")).toBe(true);
+  });
+
+  it("detects a foundation stack that does not reach y = 0", () => {
+    const bad = { ...DEFAULT_CONFIG, pedestal: { ...DEFAULT_CONFIG.pedestal, height: 0.8 } };
+    expect(validateConfig(bad).some((e) => e.field === "foundationDepth")).toBe(true);
+  });
 });

@@ -34,19 +34,31 @@ export interface BuildingConfig {
   footing: { width: number; depth: number; thickness: number };
   pedestal: { width: number; depth: number; height: number };
   column: { width: number; depth: number };
+  /** Per-storey column size override, keyed by storey index (0 = ground storey). */
+  columnOverrides: Readonly<Record<number, { width: number; depth: number }>>;
   beam: { width: number; depth: number };
+  /** Add plinth/tie beams at L0 (beams then exist at L0..L4 and ROOF). */
+  includePlinthBeams: boolean;
   slab: { thickness: number };
 
   // Core positions (bay indices, 0-based from bottom-left of grid)
   stairBay: { xStart: number; xEnd: number; zStart: number; zEnd: number };
   shaftBay: { xStart: number; xEnd: number; zStart: number; zEnd: number };
 
+  /** Slab openings, centred in their bay. width = X extent, length = Z extent. */
+  stairOpening: { width: number; length: number };
+  shaftOpening: { width: number; length: number };
+
   // Stair geometry
   stair: {
     risersPerStorey: number;
     riserHeight: number;
     treadDepth: number;
-    width: number;
+    width: number; // width of each flight
+    landingDepth: number; // landing extent along the flight direction
+    flightGap: number; // plan gap between the two flights of a dog-leg
+    waistThickness: number; // vertical thickness of the stepped slab below the nosing line
+    roofAccess: boolean; // add a L4 -> ROOF flight and a stair opening in the roof slab
   };
 }
 
@@ -65,7 +77,9 @@ export const DEFAULT_CONFIG: BuildingConfig = {
   footing: { width: 2.0, depth: 2.0, thickness: 0.6 },
   pedestal: { width: 0.6, depth: 0.6, height: 0.9 },
   column: { width: 0.45, depth: 0.45 },
+  columnOverrides: {},
   beam: { width: 0.30, depth: 0.50 },
+  includePlinthBeams: true,
   slab: { thickness: 0.15 },
 
   // Bay indices: stair well at grid D-E / 3-4 (indices 3-4 along X, 2-3 along Z)
@@ -73,7 +87,20 @@ export const DEFAULT_CONFIG: BuildingConfig = {
   // Service shaft at grid E-F / 3-4 (indices 4-5 along X, 2-3 along Z)
   shaftBay: { xStart: 4, xEnd: 5, zStart: 2, zEnd: 3 },
 
-  stair: { risersPerStorey: 24, riserHeight: 0.15, treadDepth: 0.28, width: 1.2 },
+  // Openings are centred in their bay (stair well ~2.8 x 5.4, shaft 1.5 x 1.5)
+  stairOpening: { width: 2.8, length: 5.4 },
+  shaftOpening: { width: 1.5, length: 1.5 },
+
+  stair: {
+    risersPerStorey: 24,
+    riserHeight: 0.15,
+    treadDepth: 0.28,
+    width: 1.2,
+    landingDepth: 1.2,
+    flightGap: 0.3,
+    waistThickness: 0.2,
+    roofAccess: false,
+  },
 };
 
 // ── Derived values ───────────────────────────────────────────────────────────
@@ -167,6 +194,75 @@ export function validateConfig(cfg: BuildingConfig): ValidationError[] {
   }
   if (cfg.footing.width > cfg.gridSpacingX || cfg.footing.depth > cfg.gridSpacingZ) {
     errors.push({ field: "footing", message: "Footing larger than bay spacing" });
+  }
+
+  // Foundation stack: footing + pedestal reach exactly from foundation depth to y = 0
+  const stack = cfg.footing.thickness + cfg.pedestal.height;
+  if (Math.abs(stack - cfg.foundationDepth) > 1e-6) {
+    errors.push({
+      field: "foundationDepth",
+      message: `Footing + pedestal (${stack}) ≠ foundationDepth (${cfg.foundationDepth})`,
+    });
+  }
+
+  // Beam must be shallower than a storey and the slab must sit within the beam depth
+  if (cfg.beam.depth >= cfg.storeyHeight) {
+    errors.push({ field: "beam", message: "Beam depth ≥ storey height" });
+  }
+  if (cfg.slab.thickness > cfg.beam.depth) {
+    errors.push({ field: "slab", message: "Slab thicker than beam depth (breaks junction rule)" });
+  }
+
+  // Openings: fully inside their bay, clear of beams and of column/pedestal corners
+  const widestNode = Math.max(
+    cfg.column.width,
+    cfg.pedestal.width,
+    ...Object.values(cfg.columnOverrides).map((c) => c.width),
+  );
+  const deepestNode = Math.max(
+    cfg.column.depth,
+    cfg.pedestal.depth,
+    ...Object.values(cfg.columnOverrides).map((c) => c.depth),
+  );
+  for (const [name, bay, op] of [
+    ["stairOpening", cfg.stairBay, cfg.stairOpening],
+    ["shaftOpening", cfg.shaftBay, cfg.shaftOpening],
+  ] as const) {
+    const bayW = (bay.xEnd - bay.xStart) * cfg.gridSpacingX;
+    const bayL = (bay.zEnd - bay.zStart) * cfg.gridSpacingZ;
+    if (bay.xEnd - bay.xStart !== 1 || bay.zEnd - bay.zStart !== 1) {
+      errors.push({ field: name, message: `${name} bay must be a single grid bay` });
+      continue;
+    }
+    const halfW = op.width / 2;
+    const halfL = op.length / 2;
+    const innerHalfW = bayW / 2 - cfg.beam.width / 2;
+    const innerHalfL = bayL / 2 - cfg.beam.width / 2;
+    if (halfW > innerHalfW + 1e-9 || halfL > innerHalfL + 1e-9) {
+      errors.push({ field: name, message: `${name} reaches the bay beams` });
+    }
+    // Clear of column corners: must stay out of at least one of the corner bands
+    const clearOfCornerX = halfW <= bayW / 2 - widestNode / 2 + 1e-9;
+    const clearOfCornerZ = halfL <= bayL / 2 - deepestNode / 2 + 1e-9;
+    if (!clearOfCornerX && !clearOfCornerZ) {
+      errors.push({ field: name, message: `${name} intersects column corners` });
+    }
+  }
+
+  // Stair plan must fit inside the stair opening
+  const riserCount = cfg.stair.risersPerStorey;
+  if (riserCount % 2 !== 0) {
+    errors.push({ field: "stair", message: "risersPerStorey must be even (two equal flights)" });
+  } else {
+    const flightRun = (riserCount / 2 - 1) * cfg.stair.treadDepth;
+    const planW = 2 * cfg.stair.width + cfg.stair.flightGap;
+    const planL = flightRun + cfg.stair.landingDepth;
+    if (planW > cfg.stairOpening.width + 1e-9 || planL > cfg.stairOpening.length + 1e-9) {
+      errors.push({
+        field: "stair",
+        message: `Stair plan ${planW} x ${planL} does not fit opening ${cfg.stairOpening.width} x ${cfg.stairOpening.length}`,
+      });
+    }
   }
 
   // Grid label count matches

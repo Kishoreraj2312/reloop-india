@@ -17,9 +17,22 @@
 - Recovery routes are initial assumptions pending site inspection.
 - Cost estimates (future) will use placeholder Indian market rates, clearly labelled.
 
+## A1 Decisions (structural frame)
+1. **Junction rule deviates from the brief** (documented in BUILDING_SPECIFICATION.md): columns run level-to-level and
+   end flush with the beam/slab top instead of at the beam underside, because the literal rule leaves a 0.45×0.45×0.5 m void
+   at every joint. Beams still end on column faces (pedestal faces at L0).
+2. **Slab panels are notched rectilinear polygons**, not plain boxes: columns/pedestals are wider than beams, so a plain
+   box inset to the beam faces would interpenetrate them. Built without CSG.
+3. **Floor tags**: storey members use the tag of the level at their base (`G`, `F01`..`F04`), level members the level's
+   own tag (`G`..`F04`, `RF`). The brief's "F01 = storey 1" examples differ; see COMPONENT_DATA_MODEL.md.
+4. Column ID has no extra `C-` segment (`STR-COL-F01-B2`, as A0 defined), and the material is carried by A0's `materialId`.
+5. A0's stub viewer was removed; `registry` gained `unlinkMesh`; config gained `columnOverrides`, `includePlinthBeams`,
+   `stairOpening`, `shaftOpening` and stair layout fields (all with validation).
+
 ## Known Limitations
 - Browser visual verification not performed in A0 (Playwright unavailable in env).
   Build + typecheck confirm code correctness; manual browser check recommended.
 - Three.js bundle ~1.1 MB gzipped 311 KB — acceptable for desktop expo demo.
   Code-splitting can be added if needed.
-- No lint tool configured yet (can add ESLint in A1 if desired).
+- No lint tool is configured (none added in A1 to avoid new dependencies). A1 browser verification was done — see
+  EXECUTION_ROADMAP.md (A1 Results); the A0 note above no longer applies.

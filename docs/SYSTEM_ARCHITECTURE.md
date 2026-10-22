@@ -10,36 +10,51 @@
 ```
 src/
   building/
-    config.ts       — Authoritative building parameters + validation
+    config.ts       — Authoritative building parameters + validation (grid, levels, members, openings, stair)
     types.ts        — BuildingComponent, enums, scenario overlay
     ids.ts          — Deterministic ID builder/parser
-    registry.ts     — Component store, mesh linking, queries
-    index.ts        — Barrel export
-    *.test.ts       — Unit tests
+    registry.ts     — Component store, mesh linking/unlinking, queries
+    structure/      — A1 pure generators: config -> ComponentRecord[]
+      grid.ts         derived grid, levels, joint (node) sizes, STRUCTURAL_MATERIAL
+      geometry.ts     geometry descriptors (box | prism), ComponentRecord, volume helpers
+      record.ts       record factory (IDs, defaults, freezing)
+      footings.ts  columns.ts  beams.ts  slabs.ts  stairs.ts  openings.ts
+      bounds.ts       record bounds + exact solids (used by framing and tests)
+      index.ts        generateStructure(cfg), memoised getStructure(cfg)
+      structure.test.ts
   scene/
-    SceneHierarchy.tsx — Building > Floor > System group components
-    StubViewer.tsx     — A0 placeholder (grid + slab planes)
-    index.ts
-  App.tsx           — Main entry, Canvas + overlay
-  main.tsx          — DOM mount
-docs/               — Project documentation
+    SceneHierarchy.tsx — Building > Floor > System > Assembly groups
+    sceneTree.ts       — pure grouping of records into that hierarchy
+    StructuralModel.tsx, ComponentMesh.tsx — records -> meshes (identity lives in ComponentMesh)
+    geometryPool.ts, prismGeometry.ts, materials.ts — shared geometry/material, disposal
+    Viewer.tsx, Lighting.tsx, CameraRig.tsx, framing.ts — Canvas, light, camera framing/views
+    IdInspector.tsx, SelectionOutline.tsx, DevHooks.tsx — dev-only (ID inspector, outline, window.__reloop)
+  App.tsx           — generate once, register once, render
+scripts/browser/    — dependency-free Chrome/CDP verification (npm run verify:browser)
+docs/               — Project documentation; docs/screenshots/a1 — A1 browser captures
 ```
 
 ## Data Flow
 ```
-BuildingConfig → Generators (A1+) → BuildingComponent[] → Registry
-                                                             ↓
-Canvas ← SceneHierarchy ← Meshes (userData.componentId) → Registry.getById()
-                                                             ↓
-                                                       Info Panel / Dashboard
+BuildingConfig -> generateStructure (pure) -> ComponentRecord[] --+--> registry.registerAll
+                                                                   +--> StructuralModel -> ComponentMesh
+Canvas <- SceneHierarchy <- meshes (userData.componentId, name = ID) --> registry.getById()
 ```
+Records and meshes come from the same `getStructure(cfg)` output, so they cannot diverge.
 
 ## Scene Hierarchy
-Building_G4 > Floor_{L0..ROOF} > {structure,architecture,plumbing,electrical} > Meshes
+`Building_G4 > Floor_{FDN,L0..L4,ROOF} > {floor}_structure > {floor}_structure_{assembly} > mesh`
 
-Each mesh carries `userData.componentId`. Registry maps mesh UUID → component ID for
-raycasting lookups. Exploded-view offsets will be applied as group-level transforms
-(reading `originalPosition`, never overwriting).
+Each mesh carries `userData.componentId` and `name = component ID`. Exploded-view offsets will be applied as
+group-level transforms (reading `originalPosition`, never overwriting).
+
+## Rendering notes
+- One mesh per component behind `ComponentMesh`; geometries are shared by dimension key (19 geometries for 939 meshes),
+  one material per member type. Instancing can replace the wrapper without changing identity.
+- `frameloop="demand"`; the shadow map is rendered once and frozen (`shadowMap.autoUpdate = false`) because the model
+  is static — set `needsUpdate` when members move (A4). Cut views use per-material clip planes with `clipShadows`.
+- Prisms (slab panels, stair flights) use `prismGeometry.ts`, **not** `ExtrudeGeometry`: in three r175 it emits no caps
+  when `bevelEnabled: false`. `geometryPool.test.ts` guards this (closed, outward-wound meshes).
 
 ## Scenario Isolation
 `ScenarioOverlay = Map<componentId, { removed, removalPhase }>` — kept outside

@@ -1,29 +1,28 @@
 /**
- * ReLoop India — Scene Hierarchy Builder
+ * ReLoop India — Scene Hierarchy
  *
- * Building > Floor > System > Component
- * Each group carries stable names for traversal.
- * Visibility toggles are plumbed as props (state managed by parent).
+ * Building > Floor > System > Assembly > Component
+ * Groups carry stable names for traversal. Visibility toggles are plumbed as props
+ * (state is managed by the parent).
  */
 
-import { useRef, useEffect, type ReactNode } from "react";
-import { Group } from "three";
+import type { ReactNode } from "react";
 import type { BuildingSystem } from "@/building/types";
 import type { LevelName } from "@/building/config";
+import type { AssemblyName } from "@/building/structure";
+
+/** Floor groups: the foundation zone below L0, then L0..L4 and ROOF. */
+export type FloorKey = "FDN" | LevelName;
 
 interface FloorGroupProps {
-  level: LevelName;
+  level: FloorKey;
   visible?: boolean;
   children?: ReactNode;
 }
 
 export function FloorGroup({ level, visible = true, children }: FloorGroupProps) {
-  const ref = useRef<Group>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.name = `Floor_${level}`;
-  }, [level]);
   return (
-    <group ref={ref} visible={visible}>
+    <group name={`Floor_${level}`} visible={visible}>
       {children}
     </group>
   );
@@ -31,18 +30,30 @@ export function FloorGroup({ level, visible = true, children }: FloorGroupProps)
 
 interface SystemGroupProps {
   system: BuildingSystem;
-  level: LevelName;
+  level: FloorKey;
   visible?: boolean;
   children?: ReactNode;
 }
 
 export function SystemGroup({ system, level, visible = true, children }: SystemGroupProps) {
-  const ref = useRef<Group>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.name = `${level}_${system}`;
-  }, [system, level]);
   return (
-    <group ref={ref} visible={visible}>
+    <group name={`${level}_${system}`} visible={visible}>
+      {children}
+    </group>
+  );
+}
+
+interface AssemblyGroupProps {
+  assembly: AssemblyName;
+  system: BuildingSystem;
+  level: FloorKey;
+  visible?: boolean;
+  children?: ReactNode;
+}
+
+export function AssemblyGroup({ assembly, system, level, visible = true, children }: AssemblyGroupProps) {
+  return (
+    <group name={`${level}_${system}_${assembly}`} visible={visible}>
       {children}
     </group>
   );
@@ -53,9 +64,5 @@ interface BuildingGroupProps {
 }
 
 export function BuildingGroup({ children }: BuildingGroupProps) {
-  const ref = useRef<Group>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.name = "Building_G4";
-  }, []);
-  return <group ref={ref}>{children}</group>;
+  return <group name="Building_G4">{children}</group>;
 }

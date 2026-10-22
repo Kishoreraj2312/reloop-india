@@ -42,6 +42,11 @@ export class ComponentRegistry {
     this.meshToId.set(meshUuid, componentId);
   }
 
+  /** Remove a mesh link (called when a mesh unmounts) */
+  unlinkMesh(meshUuid: string): void {
+    this.meshToId.delete(meshUuid);
+  }
+
   /** Look up component ID from a mesh UUID */
   getIdByMesh(meshUuid: string): string | undefined {
     return this.meshToId.get(meshUuid);
