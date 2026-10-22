@@ -14,7 +14,28 @@ function fmt(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(3);
 }
 
-export function ComponentInspector({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string | null) => void }) {
+/** Components of the selected component's network, reached through physical joints (connectedTo). */
+export function traceNetwork(id: string): string[] {
+  const start = registry.getById(id);
+  if (!start) return [];
+  const net = start.networkId ?? (start.connectedTo ?? []).map((c) => registry.getById(c)?.networkId).find(Boolean);
+  if (!net) return [];
+  const out = new Set<string>([id]);
+  const queue = [id];
+  while (queue.length) {
+    const c = registry.getById(queue.pop()!);
+    for (const n of c?.connectedTo ?? []) {
+      if (out.has(n)) continue;
+      const r = registry.getById(n);
+      if (!r) continue;
+      out.add(n); // boundary endpoints (other networks, A2 fittings) are shown but not expanded
+      if (r.networkId === net) queue.push(n);
+    }
+  }
+  return [...out];
+}
+
+export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }: { selectedId: string | null; onSelect: (id: string | null) => void; onTrace?: (ids: string[]) => void; traced?: number }) {
   const c = selectedId ? registry.getById(selectedId) : undefined;
   const material = c ? (hasMaterial(c.materialId) ? materialById(c.materialId).name : c.materialId === STRUCTURAL_MATERIAL.id ? STRUCTURAL_MATERIAL.name : c.materialId) : "";
   const parent = c?.parentId ? registry.getById(c.parentId) : undefined;
@@ -35,6 +56,25 @@ export function ComponentInspector({ selectedId, onSelect }: { selectedId: strin
           <Row k="dimensions" v={dims.map(([k, v]) => `${k} ${fmt(v as number)}`).join(", ")} />
           <Row k="quantity" v={`${fmt(c.quantity)} ${c.unit}`} />
           <Row k="confidence" v={c.confidence} />
+          {c.networkId && <Row k="network" v={c.networkId} />}
+          {c.nominalSize && <Row k="size" v={c.nominalSize} />}
+          {c.gradient !== undefined && <Row k="fall" v={`1 in ${Math.round(1 / c.gradient)}`} />}
+          {c.connectedTo && <Row k="connections" v={`${c.connectedTo.length}: ${c.connectedTo.slice(0, 3).join(", ")}${c.connectedTo.length > 3 ? " ..." : ""}`} />}
+          {onTrace && (c.networkId || c.connectedTo?.length) ? (
+            <div style={{ marginTop: 4 }}>
+              <button data-testid="trace" onClick={() => onTrace(traceNetwork(c.id))} style={linkStyle}>
+                trace network
+              </button>
+              {traced > 0 && (
+                <>
+                  {" "}· {traced} traced ·{" "}
+                  <button data-testid="clear-trace" onClick={() => onTrace([])} style={linkStyle}>
+                    clear
+                  </button>
+                </>
+              )}
+            </div>
+          ) : null}
           {parent && (
             <div style={{ marginTop: 4 }}>
               parent:{" "}

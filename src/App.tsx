@@ -57,16 +57,18 @@ export default function App() {
   const params = useMemo(readParams, []);
   const [selectedId, setSelectedId] = useState<string | null>(params.select);
   const [viewState, setViewState] = useState<ViewState>(params.state);
+  const [trace, setTrace] = useState<string[]>([]);
   const handleSelect = useCallback((id: string | null) => setSelectedId(id), []);
   const reset = useCallback(() => {
     setViewState(DEFAULT_VIEW);
     setSelectedId(null);
+    setTrace([]);
   }, []);
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      <Viewer records={records} view={params.view} viewState={viewState} onSelect={handleSelect} selectedId={selectedId} onViewState={setViewState} clipOverride={params.clip} />
-      <ComponentInspector selectedId={selectedId} onSelect={handleSelect} />
+      <Viewer records={records} view={params.view} viewState={viewState} onSelect={handleSelect} selectedId={selectedId} onViewState={setViewState} clipOverride={params.clip} traceIds={trace} />
+      <ComponentInspector selectedId={selectedId} onSelect={handleSelect} onTrace={setTrace} traced={trace.length} />
       <ControlsPanel view={viewState} onChange={setViewState} onReset={reset} />
     </div>
   );

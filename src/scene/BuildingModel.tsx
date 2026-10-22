@@ -22,6 +22,7 @@ import { buildBatches } from "./arch/batches";
 import { InstancedBatch } from "./arch/InstancedBatch";
 import { createArchMaterials, disposeArchMaterials, partMaterialKey } from "./arch/archMaterials";
 import { UnitGeometries } from "./arch/unitGeometry";
+import { MEP_MATERIALS } from "@/building/mep/materials";
 import { groupVisibility, type ViewState } from "./viewState";
 
 interface BuildingModelProps {
@@ -64,6 +65,21 @@ export function BuildingModel({ records, onSelect, clip, view }: BuildingModelPr
     gl.shadowMap.needsUpdate = true; // shadow map is otherwise frozen (see Lighting)
     invalidate();
   }, [clip, materials, archMaterials, gl, invalidate]);
+
+  // X-ray: ghost structure and architecture materials (MEP materials stay opaque).
+  useEffect(() => {
+    const mep = new Set(MEP_MATERIALS.map((m) => m.id));
+    for (const m of [...Object.values(materials), ...archMaterials.values()]) {
+      if (mep.has(m.name.split("|")[0]!)) continue;
+      const base = (m.userData.base ??= { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite }) as { opacity: number; transparent: boolean; depthWrite: boolean };
+      m.opacity = view.xray ? Math.min(base.opacity, 0.12) : base.opacity;
+      m.transparent = view.xray ? true : base.transparent;
+      m.depthWrite = view.xray ? false : base.depthWrite;
+      m.needsUpdate = true;
+    }
+    gl.shadowMap.needsUpdate = true;
+    invalidate();
+  }, [view.xray, materials, archMaterials, gl, invalidate]);
 
   // Layer / floor visibility: set group flags directly.
   useEffect(() => {

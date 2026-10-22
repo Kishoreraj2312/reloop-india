@@ -19,6 +19,10 @@ export function ControlsPanel({ view, onChange, onReset }: { view: ViewState; on
           {LAYER_LABELS[l]}
         </label>
       ))}
+      <label style={row}>
+        <input type="checkbox" data-testid="xray" checked={!!view.xray} onChange={(e) => onChange({ ...view, xray: e.target.checked })} />
+        MEP X-ray (ghost building)
+      </label>
       <div style={{ opacity: 0.55, fontSize: 10, letterSpacing: 0.4, margin: "8px 0 4px" }}>FLOORS</div>
       <label style={row}>
         isolate

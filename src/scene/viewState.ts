@@ -19,6 +19,8 @@ export const LAYERS = [
   "fixtures",
   "balconiesFacade",
   "roof",
+  "plumbing",
+  "electrical",
 ] as const;
 export type LayerKey = (typeof LAYERS)[number];
 
@@ -32,6 +34,8 @@ export const LAYER_LABELS: Readonly<Record<LayerKey, string>> = {
   fixtures: "Fixtures",
   balconiesFacade: "Balconies & facade",
   roof: "Roof",
+  plumbing: "Plumbing (A3)",
+  electrical: "Electrical (A3)",
 };
 
 export const CATEGORY_LAYER: Readonly<Record<ArchCategory, LayerKey>> = {
@@ -55,6 +59,8 @@ export interface ViewState {
   readonly ceilingsInIsolation: boolean;
   /** Per-floor visibility when not isolating. */
   readonly floors: Readonly<Record<FloorKey, boolean>>;
+  /** Ghost the building (A1/A2) so MEP services read through it. */
+  readonly xray?: boolean;
 }
 
 export const DEFAULT_VIEW: ViewState = {
@@ -83,6 +89,8 @@ export function groupVisibility(v: ViewState, categories: readonly ArchCategory[
     m.set(`Floor_${f}`, floorVisible(v, f));
     m.set(`${f}_structure`, v.layers.structure);
     m.set(`${f}_architecture`, true);
+    m.set(`${f}_plumbing`, v.layers.plumbing !== false);
+    m.set(`${f}_electrical`, v.layers.electrical !== false);
     for (const c of categories) m.set(`${f}_architecture_${c}`, categoryVisible(v, c));
   }
   return m;

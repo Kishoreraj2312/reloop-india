@@ -33,9 +33,11 @@ interface ViewerProps {
   onViewState?: (v: ViewState) => void;
   /** Explicit section plane (keeps coordinates <= value), overriding the view's own. */
   clipOverride?: ClipSpec;
+  /** Components highlighted by a network trace. */
+  traceIds?: readonly string[];
 }
 
-export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState, onSelect, selectedId = null, onViewState, clipOverride }: ViewerProps) {
+export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState, onSelect, selectedId = null, onViewState, clipOverride, traceIds }: ViewerProps) {
   // Framing and the shadow camera follow the building itself (site MEP items lie outside it).
   const bounds = useMemo(() => unionBounds(records.filter((r) => r.system === "structure" || r.system === "architecture")), [records]);
   const { ctx, groundY, gridSize } = useMemo(() => {
@@ -76,7 +78,7 @@ export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState
       <gridHelper args={[gridSize, gridSize, 0x9aa1a8, 0xc3c8cd]} position={[0, groundY, 0]} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} minDistance={1} maxDistance={180} minPolarAngle={0} maxPolarAngle={Math.PI / 2 - 0.03} />
       <CameraRig view={view} bounds={bounds} ctx={ctx} />
-      <SelectionOutline selectedId={selectedId} />
+      <SelectionOutline selectedId={selectedId} {...(traceIds ? { traceIds } : {})} />
       {onSelect && import.meta.env.DEV && <DevHooks records={records} onSelect={onSelect} onViewState={onViewState} />}
     </Canvas>
   );

@@ -36,6 +36,9 @@ export function mepAllowRules(byId: ReadonlyMap<string, ComponentRecord>): Allow
     { reason: "sink waste/supply inside the sink base unit", allow: (a, b) => isMep(a) && (b.componentType === "kitchen_base_cabinet" || b.componentType === "kitchen_plinth") && a.roomId === b.roomId },
     { reason: "floor-trap tail through the shower tray", allow: (a, b) => a.system === "plumbing" && b.componentType === "shower_tray" && a.roomId === b.roomId },
     { reason: "cables inside the conduit / tray that carries their circuit", allow: (a, b) => a.componentType.includes("cable") && (b.carries ?? []).includes(a.networkId ?? "") },
+    { reason: "conduits and cables embedded in the RCC entrance canopy", allow: (a, b) => a.system === "electrical" && b.componentType === "entrance_canopy" },
+    { reason: "cables in their trays, conduits, junction boxes and tray adaptors (pulled through)", allow: (a, b) => a.componentType.includes("cable") && (b.system === "electrical" && /tray|conduit|junction_box|adaptor|cable/.test(b.componentType)) },
+    { reason: "cables entering panels, boards and meters", allow: (a, b) => a.componentType.includes("cable") && /panel|board|meter|isolator|rccb|mcb|pillar/.test(b.componentType) },
     { reason: "modules and meters inside their enclosure", allow: (a, b) => isMep(a) && isMep(b) && a.parentId !== undefined && a.parentId === b.parentId && (a.componentType === "mcb" || a.componentType === "energy_meter" || a.componentType === "rccb") },
   ];
 }

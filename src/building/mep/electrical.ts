@@ -504,6 +504,8 @@ function boardModules(ctx: MepContext, u: Unit): void {
     const pl = placeLocal(anchor, along, [0, 1, 0], [-w / 2, -S.size[1] / 2, -S.size[2] / 2], [w / 2, S.size[1] / 2, S.size[2] / 2]);
     const d = ctx.drafts.add(u.groups.db, { code: md.code, fixed: true, name: `${u.groups.db.name}: ${md.label}`, componentType: md.ctype, materialId: "device_white", geometry: { kind: "part", part: "mcb", size: pl.size, fill: PART_FILL.mcb! }, position: pl.position, rotation: pl.rotation, dimensions: { length: pl.size[0], width: pl.size[2], height: pl.size[1] }, unit: "nr", networkId: md.network, nominalSize: md.nominal, category: "distribution" });
     ctx.drafts.link(d.id, u.board.id);
+    // submain cables laid earlier point at the incomer: make those joints two-way
+    if (md.code === "ISO") for (const x of ctx.drafts.drafts) if (x.connections.has(d.id)) ctx.drafts.link(x.id, d.id);
     if (md.ctype === "mcb") {
       u.mcb.set(md.network, d.id);
       ctx.drafts.link(d.id, `${u.groups.db.id}-RCCB`);
