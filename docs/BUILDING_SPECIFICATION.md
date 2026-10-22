@@ -71,7 +71,7 @@ flush with the beam/slab top. Consequences, all consistent and tested:
 
 | Opening | Bay | Size (X × Z) | Levels |
 |---------|-----|--------------|--------|
-| Stair well | x ∈ [0, 6], z ∈ [-3, 3] | 2.8 × 5.4 → x ∈ [1.6, 4.4], z ∈ [-2.7, 2.7] | L1..L4 (ROOF solid unless `stair.roofAccess`) |
+| Stair well | x ∈ [0, 6], z ∈ [-3, 3] | 2.8 × 5.4 → x ∈ [1.6, 4.4], z ∈ [-2.7, 2.7] | L1..L4, and ROOF with `stair.roofAccess` (default on since A2) |
 | Service shaft | x ∈ [6, 12], z ∈ [-3, 3] | 1.5 × 1.5 → x ∈ [8.25, 9.75], z ∈ [-0.75, 0.75] | L1..ROOF |
 
 L0 is slab-on-grade (no openings). Area identity per bay (tested, tol 1e-6):
@@ -93,5 +93,6 @@ L0 is slab-on-grade (no openings). Area identity per bay (tested, tol 1e-6):
 | Column segments | 210 (42 × 5 storeys) |
 | Beams | 426 (71 × 6 levels: 216 X + 210 Z); 355 with plinth beams off |
 | Slab panels | 207 (L0 30, L1–L4 36 each, ROOF 33) |
-| Stair flights / landings | 8 / 4 |
-| **Total** | **939** |
+| Stair flights / landings | 10 / 5 (A2: `stair.roofAccess` on; 8 / 4 without) |
+| Slab panels with roof access | 210 (ROOF 36: the roof stair bay is split around the opening) |
+| **Total** | **945** (939 without roof access) |

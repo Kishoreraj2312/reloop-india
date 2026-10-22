@@ -10,7 +10,7 @@ import { DEFAULT_CONFIG, type BuildingConfig } from "@/building/config";
 import { buildGrid, openingOf, type ComponentRecord } from "@/building/structure";
 import { CameraRig } from "./CameraRig";
 import { DevHooks } from "./DevHooks";
-import { clipFor, unionBounds, type ViewContext, type ViewName } from "./framing";
+import { clipFor, unionBounds, type ClipSpec, type ViewContext, type ViewName } from "./framing";
 import { Lighting } from "./Lighting";
 import { EnvironmentLight } from "./EnvironmentLight";
 import { SelectionOutline } from "./SelectionOutline";
@@ -31,9 +31,11 @@ interface ViewerProps {
   selectedId?: string | null;
   /** Dev hook: lets the browser verification script change the view state. */
   onViewState?: (v: ViewState) => void;
+  /** Explicit section plane (keeps coordinates <= value), overriding the view's own. */
+  clipOverride?: ClipSpec;
 }
 
-export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState, onSelect, selectedId = null, onViewState }: ViewerProps) {
+export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState, onSelect, selectedId = null, onViewState, clipOverride }: ViewerProps) {
   const bounds = useMemo(() => unionBounds(records), [records]);
   const { ctx, groundY, gridSize } = useMemo(() => {
     const grid = buildGrid(cfg);
@@ -54,7 +56,7 @@ export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState
       gridSize: 2 * Math.ceil(Math.max(cfg.footprintX, cfg.footprintZ)),
     };
   }, [cfg]);
-  const clip = useMemo(() => clipFor(view, ctx), [view, ctx]);
+  const clip = useMemo(() => clipOverride ?? clipFor(view, ctx), [clipOverride, view, ctx]);
 
   return (
     <Canvas

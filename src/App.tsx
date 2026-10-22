@@ -6,7 +6,7 @@
  * diverge. Click any component to inspect it; the controls panel toggles layers and floors.
  *
  * URL params (all optional): ?view=full|top|stair|section  ?select=<component id>
- *   ?isolate=L0..L4|ROOF|FDN  ?ceilings=1  ?hide=<layer>,<layer>
+ *   ?isolate=L0..L4|ROOF|FDN  ?ceilings=1  ?hide=<layer>,<layer>  ?clip=x|y|z:<value> (section)
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -17,7 +17,7 @@ import { getArchitecture } from "@/building/architecture/generate";
 import { Viewer } from "@/scene/Viewer";
 import { ComponentInspector } from "@/scene/ComponentInspector";
 import { ControlsPanel } from "@/scene/ControlsPanel";
-import type { ViewName } from "@/scene/framing";
+import type { ClipSpec, ViewName } from "@/scene/framing";
 import type { FloorKey } from "@/scene/SceneHierarchy";
 import { FLOOR_ORDER } from "@/scene/sceneTree";
 import { DEFAULT_VIEW, LAYERS, type LayerKey, type ViewState } from "@/scene/viewState";
@@ -28,7 +28,7 @@ const records = [...getStructure(DEFAULT_CONFIG), ...getArchitecture(DEFAULT_CON
 registry.clear();
 registry.registerAll(records);
 
-function readParams(): { view: ViewName; select: string | null; state: ViewState } {
+function readParams(): { view: ViewName; select: string | null; state: ViewState; clip?: ClipSpec } {
   const q = new URLSearchParams(window.location.search);
   const v = q.get("view") as ViewName | null;
   const sel = q.get("select");
@@ -43,10 +43,12 @@ function readParams(): { view: ViewName; select: string | null; state: ViewState
           layers: { ...DEFAULT_VIEW.layers, ...Object.fromEntries(hide.map((h) => [h, false])) },
         }
       : DEFAULT_VIEW;
+  const cm = /^([xyz]):(-?[\d.]+)$/.exec(q.get("clip") ?? "");
   return {
     view: v && VIEWS.includes(v) ? v : "full",
     select: sel && registry.getById(sel) ? sel : null,
     state,
+    ...(cm ? { clip: { axis: cm[1] as ClipSpec["axis"], value: Number(cm[2]) } } : {}),
   };
 }
 
@@ -62,7 +64,7 @@ export default function App() {
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      <Viewer records={records} view={params.view} viewState={viewState} onSelect={handleSelect} selectedId={selectedId} onViewState={setViewState} />
+      <Viewer records={records} view={params.view} viewState={viewState} onSelect={handleSelect} selectedId={selectedId} onViewState={setViewState} clipOverride={params.clip} />
       <ComponentInspector selectedId={selectedId} onSelect={handleSelect} />
       <ControlsPanel view={viewState} onChange={setViewState} onReset={reset} />
     </div>

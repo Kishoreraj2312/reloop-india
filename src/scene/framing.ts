@@ -109,7 +109,7 @@ export function frameBox(
 
 /** Clip plane for a view: keep everything with coordinate <= value along `axis`. */
 export interface ClipSpec {
-  readonly axis: "y" | "z";
+  readonly axis: "x" | "y" | "z";
   readonly value: number;
 }
 

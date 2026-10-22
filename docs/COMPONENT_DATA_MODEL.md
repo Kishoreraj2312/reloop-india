@@ -76,3 +76,66 @@ ROOF beams and roof slab panels live in the `roof` assembly; all other beams/sla
 ## Scenario state
 Scenario overlays (`ScenarioOverlay`) are separate Maps keyed by component ID. They hold `removed`, `removalPhase`
 and `notes` without mutating baseline records.
+
+---
+
+## A2 — Architecture components (`system = "architecture"`, prefix `ARC`)
+
+Generators in `src/building/architecture/` produce records through `arcRecord()` / `arcAssembly()` (`record.ts`), from
+the same plan model the validators check; the renderer consumes only these records.
+
+### Floor tag
+Storey items use the storey index (`G`, `F01`…`F04`) like A1 columns/stairs: a wall, window or ceiling of the storey
+between L1 and L2 is `F01`. Items on a level slab (balconies at level s, floor bands at level s) use that level. Roof items
+(parapets, roof finish, access enclosure and its door, roof canopies over balcony stacks, roof-level stair lining) are `RF`.
+
+### ID patterns (location segments)
+Room ids are `{apartment}-{room}` (`A3-LIV`, `CM-COR`); apartments `A1`…`A6`, common areas `CM`.
+Door/window keys are `{room}-{side}-{nn}`: the room the door swings into (windows: their room), the side of that room
+the opening is on (N/S/E/W) and an index along that side. Child IDs always extend their parent's location.
+
+| Prefix | Assembly | Components (examples) |
+|---|---|---|
+| `ARC-WALL` | exterior per bay `ARC-WALL-F01-EXT-S-C1-D1`; party/core per room pair `ARC-WALL-F01-A1-FOY-CM-COR`; stair lining `ARC-WALL-F01-CM-STC-WELL` | piers `-P01`, sill panel `-SL01`, reveals `-RV01/-RV02`, lintel `-LN01`, above-lintel `-AB01` (index = opening along the wall) |
+| `ARC-PART` | same-apartment partition `ARC-PART-F02-A3-BED1-PAS` (`-R2` when a pair has two runs) | as walls |
+| `ARC-WIN` | `ARC-WIN-F02-A3-LIV-N-01` | frame `-FRM-H/-B/-L/-R`, mullions `-MUL01`, sash members `-SSH01-H/-B/-L/-R`, glazing `-GLZ01`, handles `-HDL01`, stone sill `-SIL`, sunshade `-SHD` |
+| `ARC-DOOR` | `ARC-DOOR-F01-A1-BED1-N-01` (roof: `ARC-DOOR-RF-MUM-S-01`) | threshold `-THR`, jambs `-JMB-L/-R`, head `-HED`, leaf `-LEF` (`-LEF01/02` double; glazed: `-STL-L/-R`, `-RAIL-T/-B`, `-GLZ`), hinges `-HNG01`, handles `-HDL-A-PLT`, `-HDL-A-LVR` (A/B = the two faces) |
+| `ARC-BAL` | `ARC-BAL-F02-A1-S`; roof canopy `ARC-BAL-RF-A1-S-CAP` | `-SLB`, `-SOF`, `-FIN`, `-KRB-F/-L/-R`, `-HRL-F/-L/-R`, posts `-PST01`, balusters `-BLS001`, spout `-OUT` |
+| `ARC-FLR` | per room `ARC-FLR-F01-A1-LIV` | screed `-SCR01` |
+| `ARC-TILE` | floor tiles are children of `ARC-FLR`; wall tiling `ARC-TILE-F01-A1-BATH2-WAL` | floor tile modules `ARC-TILE-F01-A1-LIV-R03C05` (row/col on the room grid, `-2` for a cut second piece); wall panels `-WAL-N01`, column returns `-WAL-CE01` |
+| `ARC-SKT` | children of `ARC-FLR` | `ARC-SKT-F01-A1-LIV-07` |
+| `ARC-CEIL` | per room `ARC-CEIL-F01-A1-LIV` | field boards `-FLD01`, cove band `-COV01`, fascia `-FSC-N` |
+| `ARC-FIX` | ceiling fittings `ARC-FIX-F01-A1-LIV`; utility appliances `ARC-FIX-F01-A1-UTL-APP` | lights `-LGT01`; washer `-APP-WSH`, stubs `-APP-CPW/-CPD`, drain `-APP-DRN` |
+| `ARC-KIT` | per kitchen `ARC-KIT-F01-A1-KIT` | run `M` (main) / `L` (second): `-M-BAS01` carcass, `-M-BAS01-DW` drawer front, `-M-BAS01-DR` door front, `-M-WAL01(-DR)`, `-M-PLN`, `-M-CTP1`, `-M-BSP1`, `-M-FIL`; `-SNK-B/-1..4`, `-FCT-B/-S`, `-HOB`, `-HOD-C/-F`, `-FRG`, `-CPW`, `-CPD` |
+| `ARC-BATH` | per wet room `ARC-BATH-F01-A1-BATH2` | `-SHW-T/-G/-M/-A/-H/-S`, `-DRN`, `-WC-P/-C`, `-BSN`, `-BSN-FCT-B/-S`, `-MIR`, `-TWR(-B1/-B2)`, `-TPH`, `-CP-WC`, `-CP-BSN-W/-D` |
+| `ARC-STAIRFIN` | per stair storey `ARC-STAIRFIN-F01-FL1`, `-FL2`, `-LND` | treads `-TRD01`…, riser linings `-RSR01`…, balusters `-BLS01`, sloping handrail `-HRL`, wall string `-STR`; landing `-FIN` |
+| `ARC-FAC` | per floor and side `ARC-FAC-F02-S`; plinth `ARC-FAC-G-PLN` | fins `-FIN-D1`, floor bands `-BND-C1-D1(-2)`, column cladding `-CLD-D1-1`, downpipes `-DP1`, rainwater heads `-RWH1`, number panel `-NUM`, lights `-LGT1`; plinth modules `-PLN-S-01`, cap `-PLN-CAP-S` |
+| `ARC-ROOF` | `ARC-ROOF-RF-PAR-S`, `-FIN`, `-MUM`, `-SHF`, `-DRN` | parapet `-PAR-A1-B1`, coping `-CPG-A1-B1(-n)`, finish `-P07(-n)`, enclosure walls `-WAL-W`, `-WAL-S-P01/-LN01/-AB01`, slab `-SLB`, floor `-FLR01`, drains `-DRN1` |
+| `ARC-ENT` | `ARC-ENT-G-MAIN` | landing `-LND`, steps `-STP01`, canopy `-CNP`, canopy lights `-CLT1` |
+
+### Record fields (A2 additions to `BuildingComponent`)
+- `assemblyType` (e.g. `window`, `wall`, `kitchen`, `floor_finish`), `apartmentId`, `roomId` where relevant.
+- `materialId` keys into `ARCH_MATERIALS` (`materials.ts`): each entry has a `substance` (brick masonry, concrete,
+  porcelain tile, glass, …) for Part B density/cost and render-only PBR parameters.
+- `unit` / `quantity` follow the dimensions: `m3` = geometry volume (masonry pieces, lintels, slabs, stone),
+  `m2` = length × width (horizontal panels, tiles) or length × height (vertical panels, glazing, leaves; walls as
+  assemblies), `m` = length (skirting, rails, downpipes, plinths), `nr` = 1 (fittings, frames, assemblies).
+  `dimensions` match the geometry box (tested). `unit` gained `nr` for this.
+- `confidence = "assumed"`, `condition = "good"`, `recoveryRoute = "inspect"` (placeholders until Part B).
+- `parentId` = the assembly (a real `group` record with an explicit envelope that its children lie inside);
+  `dependencies` link openings to their host wall assembly and lintel piece.
+- Geometry: `box` (axis-aligned, or rotated about X for sloping stair members), `cylinder` (pipes, rails, fittings),
+  `group` (assemblies, not drawn). `originalPosition`/`originalRotation` are frozen; presentation never writes them.
+
+### Rendering identity (instancing)
+All architecture components are drawn as instances: one `InstancedMesh` per floor × category × material × unit
+shape (`scene/arch/batches.ts`). `mesh.userData.componentIds[i]` and `registry.linkInstances` give the
+instanceId → componentId map used for picking; `registry.getInstance(id)` gives the reverse for highlighting.
+Structural members keep one mesh per member. Totals (default config): 51,494 records = 2,737 assemblies + 48,757 drawn
+components (47,812 instanced, 945 plain meshes).
+
+### Scene hierarchy (A2)
+`Building_G4 > Floor_{FDN,L0..L4,ROOF} > {floor}_{structure|architecture} > {floor}_{system}_{category} > meshes/batches`.
+Architecture categories: `exteriorWalls, partitions, openings, floors, ceilings, fixtures, stairFinishes, balconies,
+facade, roof`. The assembly level is carried by `parentId` (assemblies are records, not scene nodes) so an exploded view
+can offset whole categories by group transform and individual assemblies by instance matrix, without touching records.

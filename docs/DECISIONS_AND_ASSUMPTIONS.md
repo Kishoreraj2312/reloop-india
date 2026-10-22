@@ -46,3 +46,51 @@
    variants explicitly.
 2. **Corridor position follows the A1 stair.** The stair arrives at the south edge of its well, so the common corridor
    runs E–W just south of gridline 3 (z −4.8…−3); see ARCHITECTURE_LAYOUT.md.
+3. **Stairwell lining walls.** The A1 stair stands in a 2.8 × 5.4 m opening with 1.4 m floor strips beside it, so the
+   flights' outer edges faced a drop. Instead of guarding dead strips, A2 encloses the well with 0.115 walls standing on
+   the slab just outside the opening (W/E/N); the opening itself stays clear. Guards remain only where needed (inner
+   flight balustrades, landing north edge).
+4. **En-suite deepened (stage 4).** The fixture validators showed shower + WC + basin with 0.6 m clear zones do not fit
+   a 1.93 × 1.69 m en-suite. It became 2.1 × 2.25 (boundary); the master bedroom keeps 3.43 × 3.69 m clear plus a small
+   door lobby (an L-shaped room of two rectangles).
+5. **Walls stop at the beam soffit everywhere (clear height 3.1 m)**, including partitions not under a beam; the 0.35 m
+   above off-grid partitions is inside the ceiling void (head detail not modelled). This keeps every wall clear of every
+   beam without per-crossing cut-outs.
+6. **Junction ownership instead of CSG.** Walls are extended to the far face of the walls they meet; for each overlapping
+   pair exactly one keeps the overlap (a wall passing through beats one ending there unless the ending wall has a higher
+   rank: exterior > core/party > partition), and columns are subtracted from all. Openings split the host piece into
+   piers, reveals, sill panel, lintel and above-lintel infill.
+7. **Frame grid on the facade.** Floor bands (beam zone) and thin column cladding project 50 mm and form a frame; fins
+   flank the balcony stacks; casement windows get sunshades (chajjas) on the lintel band; sliders and ventilators do not.
+8. **Ceiling light fittings ride with the ceilings layer** (they are ceiling-mounted), so cutaway plans show no floating
+   lights. The fixtures layer covers kitchens, bathrooms and appliances.
+9. **Instanced rendering for all architecture.** One InstancedMesh per floor × category × material × unit shape, with
+   an instanceId → componentId map, keeps the full model within the draw-call budget (1,191 calls in the full exterior
+   view, of which 945 are A1 member meshes). Nothing is merged: each instance is a component.
+10. **Overlap allow-list: empty.** Sloping stair members (A1 flight prisms, rotated handrails and strings) are checked
+   exactly (x-extrusions of polygons, clipped area × x-overlap) instead of being allow-listed; everything else is boxes.
+11. **Site ground plane** at finished grade (−0.45) is presentation only (not a component); it hides when the foundation
+   floor is isolated.
+
+## A2 Assumptions (planning values; all records `confidence: "assumed"`)
+- FFL = slab top + 0.05 (0.04 screed + 0.01 tile); ceiling FFL + 2.8; site grade −0.45; 3 entrance risers of 0.167.
+- Walls: exterior 0.23 (outer face flush with column outer face), party/corridor/core/shaft 0.23, partitions 0.115.
+- Openings: door heads FFL + 2.1 (entrance 2.4), window sill 0.9 / head 2.1, ventilators sill 1.65, lintel 0.15,
+  reveal depth 0.115, fit tolerance 5 mm, minimum pier 50 mm.
+- Clear room minimums: bedroom 2.8 m, kitchen 2.0 m, bathroom 1.2 × 1.8 m, corridor/passage 1.2 m; fixture clearances
+  0.6 m in front of WC, basin, shower entry; door approach 0.75 m (kitchens) / 0.6 m (wet rooms).
+- Balconies: 1.5 m projection beyond the wall face, cantilever conceptual (no back-span or reinforcement modelled),
+  finish 15 mm below room FFL, railing 1.05 m.
+- Internal kitchens and baths are assumed mechanically ventilated to the shaft; no ducts or plumbing are modelled
+  (connection points are visual stubs only). No code compliance, fire/egress, structural adequacy or MEP coordination
+  is claimed.
+
+## A2 Known Limitations
+- Interior column faces show the A1 structural material (not plastered); skirting and wall tiles return around
+  protruding columns but column faces are not otherwise finished.
+- Doors are modelled closed; swings are data (validated, drawn in the plan SVGs) rather than animated.
+- Fixtures are simple box/cylinder geometry; kitchen/bath layouts are rule-based per room, not individually designed.
+- The roof is plain (finish, parapet, enclosure, shaft upstand, drains); no water tank or solar equipment.
+- No lint tool is configured (none added; no new dependencies). `npm run typecheck` (strict TS with unused checks) is
+  the static gate.
+- `npm run build` warns that the bundle exceeds 500 kB (three.js); no code splitting yet.

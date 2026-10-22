@@ -38,7 +38,9 @@ organised around that spine:
 | **NX** | A4 (mirrored) | 12 × 12 + 12 × 6 m | N + bedroom 3 with walk-in wardrobe and bath (gable windows) |
 | **GC** | ground floor only, in place of A2 | 12 × 10.2 m | entrance lobby, security room, staff toilet, meter room, society office |
 
-Front zone (v 0…6) is shared by S and N: living 4.8 × 6, bedroom 2 and master bedroom 3.6 × 4.2, passage, en-suite.
+Front zone (v 0…6) is shared by S and N: living 4.8 × 6, bedroom 2 3.6 × 4.2, master bedroom 3.6 × 3.75 plus a
+1.5 × 0.45 door lobby (an L-shaped room), passage, and a 2.1 × 2.25 en-suite. The en-suite was deepened from 1.8 to
+2.25 in stage 4 because the fixture validators showed that shower + WC + basin with 0.6 m clear zones do not fit 1.8.
 Mirroring is chosen so that living rooms and balconies land on chosen bays: south balconies at bays A–B (corner),
 D–E (above the entrance) and F–G (corner); north balconies at B–C, C–D and F–G.
 
@@ -58,11 +60,11 @@ faces are not subtracted here; corridor/passage widths are checked at the column
 | Room | S (A1–A3) | N (A5, A6) | NX (A4) |
 |---|---|---|---|
 | Living | 4.74 × 5.99 | 4.63–4.74 × 5.99 | 4.63 × 5.99 |
-| Master bedroom | 3.43 × 4.14 | 3.43 × 4.14 | 3.54 × 4.14 |
+| Master bedroom (main rect) | 3.43 × 3.69 | 3.43 × 3.69 | 3.54 × 3.69 |
 | Bedroom 2 | 3.49 × 4.14 | 3.49 × 4.14 | 3.49 × 4.14 |
 | Bedroom 3 | — | — | 5.94 × 4.08 |
 | Kitchen | 3.43 × 4.03 | 3.43 × 3.49 | 3.54 × 3.49 |
-| En-suite / common bath | 1.93 × 1.69 / 2.29 × 2.29 | same | 2.04 × 1.69 / 2.29 × 2.29 |
+| En-suite / common bath | 1.93 × 2.14 / 2.29 × 2.29 | same | 2.04 × 2.14 / 2.29 × 2.29 |
 | Passage | 5.04 × 1.69 (1.52 at column) | same | same |
 | Dining | 4.20 × 4.08 | 5.83 × 6.00 | 5.83 × 6.00 |
 
@@ -88,8 +90,17 @@ Sill 0.9, head 2.1 above FFL; reveals 0.115 deep.
 Per storey: rooms tile the floor and each apartment envelope exactly; every room is reachable from its apartment
 entrance through its own doors/open boundaries; every apartment entrance opens onto the corridor; every room reaches the
 stair; at G the path outside → lobby → corridor → stair uses common rooms only; minimum clear dimensions; each door's
-swing stays inside its room, misses columns and every other swing; every opening sits on a wall (windows on exterior
-walls only) clear of columns and perpendicular walls. Mutation tests confirm each validator rejects a broken plan.
+swing stays inside its room's exact clear area, misses columns and every other swing; every opening sits on a wall
+(windows on exterior walls only) clear of columns and perpendicular walls. Mutation tests confirm each validator
+rejects a broken plan. Fixture placement (stage 4) is validated separately: fittings inside their room, clear of door
+swings, with free 0.6 m zones in front of WCs, basins and shower entries (`fixtures.test.ts`).
+
+## Stair core
+
+The A1 stair sits in a 2.8 × 5.4 m slab opening with 1.4 m floor strips beside it on every level. A2 encloses the well
+with lining walls standing on the slab just outside the opening (west, east and north edges, 0.115 thick, slab top to the
+slab soffit above; on the roof up to the access-enclosure slab). The opening stays clear; the well is entered from the
+corridor through the 2.8 m cased opening at its south edge, which is where the A1 flights start and arrive.
 
 ## Assumptions (planning values, not code values)
 

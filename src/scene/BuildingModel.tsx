@@ -52,9 +52,8 @@ export function BuildingModel({ records, onSelect, clip, view }: BuildingModelPr
   // (clipShadows); global renderer clip planes would not apply to the shadow pass.
   useEffect(() => {
     gl.localClippingEnabled = true;
-    const plane = clip
-      ? new Plane(clip.axis === "z" ? new Vector3(0, 0, -1) : new Vector3(0, -1, 0), clip.value)
-      : null;
+    const normal = clip?.axis === "x" ? new Vector3(-1, 0, 0) : clip?.axis === "z" ? new Vector3(0, 0, -1) : new Vector3(0, -1, 0);
+    const plane = clip ? new Plane(normal, clip.value) : null;
     for (const m of [...Object.values(materials), ...archMaterials.values()]) {
       m.clippingPlanes = plane ? [plane] : null;
       m.clipShadows = plane !== null;
