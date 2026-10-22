@@ -10,3 +10,6 @@ export * from "./boundaries";
 export * from "./swing";
 export * from "./validatePlan";
 export * from "./rect";
+export * from "./record";
+export * from "./generate";
+export * from "./validateComponents";

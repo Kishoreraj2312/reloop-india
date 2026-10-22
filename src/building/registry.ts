@@ -18,6 +18,9 @@ export class ComponentRegistry {
   private readonly components = new Map<string, BuildingComponent>();
   /** Maps Three.js object UUID → component ID */
   private readonly meshToId = new Map<string, string>();
+  /** Instanced meshes: UUID → component ID per instance index, and the reverse lookup */
+  private readonly instanceIds = new Map<string, readonly string[]>();
+  private readonly idToInstance = new Map<string, { meshUuid: string; index: number }>();
 
   /** Register a component. Throws on duplicate ID. */
   register(component: BuildingComponent): void {
@@ -47,9 +50,41 @@ export class ComponentRegistry {
     this.meshToId.delete(meshUuid);
   }
 
-  /** Look up component ID from a mesh UUID */
-  getIdByMesh(meshUuid: string): string | undefined {
+  /** Link an instanced mesh: instance i represents component ids[i]. */
+  linkInstances(meshUuid: string, ids: readonly string[]): void {
+    for (const id of ids) {
+      if (!this.components.has(id)) throw new Error(`Cannot link instance: unknown component ${id}`);
+    }
+    this.instanceIds.set(meshUuid, ids);
+    ids.forEach((id, index) => this.idToInstance.set(id, { meshUuid, index }));
+  }
+
+  unlinkInstances(meshUuid: string): void {
+    const ids = this.instanceIds.get(meshUuid);
+    if (!ids) return;
+    for (const id of ids) {
+      if (this.idToInstance.get(id)?.meshUuid === meshUuid) this.idToInstance.delete(id);
+    }
+    this.instanceIds.delete(meshUuid);
+  }
+
+  /** Look up component ID from a mesh UUID (and instance index for instanced meshes) */
+  getIdByMesh(meshUuid: string, instanceId?: number): string | undefined {
+    if (instanceId !== undefined) {
+      const ids = this.instanceIds.get(meshUuid);
+      if (ids) return ids[instanceId];
+    }
     return this.meshToId.get(meshUuid);
+  }
+
+  /** Where an instanced component is drawn (undefined for plain meshes or unlinked ids) */
+  getInstance(id: string): { meshUuid: string; index: number } | undefined {
+    return this.idToInstance.get(id);
+  }
+
+  /** Number of instanced components currently linked to meshes */
+  get linkedInstanceCount(): number {
+    return this.idToInstance.size;
   }
 
   getById(id: string): BuildingComponent | undefined {
@@ -77,7 +112,9 @@ export class ComponentRegistry {
 
   /** Get direct children of a parent component */
   getChildren(parentId: string): BuildingComponent[] {
-    return this.getAll().filter((c) => c.parentId === parentId);
+    const out: BuildingComponent[] = [];
+    for (const c of this.components.values()) if (c.parentId === parentId) out.push(c);
+    return out;
   }
 
   /** Get the parent component */
@@ -91,6 +128,8 @@ export class ComponentRegistry {
   clear(): void {
     this.components.clear();
     this.meshToId.clear();
+    this.instanceIds.clear();
+    this.idToInstance.clear();
   }
 }
 

@@ -9,7 +9,7 @@
 
 import type { BuildingConfig } from "../config";
 
-export type DoorTypeKey = "D" | "MD" | "BD" | "SD" | "ED" | "OP";
+export type DoorTypeKey = "D" | "MD" | "BD" | "SD" | "RD" | "ED" | "OP";
 export type WindowTypeKey = "W1" | "W2" | "W3" | "W4" | "V1" | "SL";
 
 export interface DoorType {
@@ -111,9 +111,12 @@ export interface ArchitectureConfig {
   };
   readonly facade: {
     readonly fin: { readonly thickness: number; readonly depth: number };
-    readonly band: { readonly projection: number };
+    readonly band: { readonly projection: number }; // floor bands and column cladding (flush frame grid)
+    /** Window sunshade (chajja) over exterior windows: projection, thickness, overhang past the opening. */
+    readonly sunshade: { readonly depth: number; readonly thickness: number; readonly overhang: number };
     readonly plinth: { readonly thickness: number; readonly module: number; readonly capHeight: number };
-    readonly downpipe: { readonly radius: number; readonly standoff: number };
+    /** Rainwater pipes on the gables, `inset` from the facade gridlines; standoff clears the floor bands. */
+    readonly downpipe: { readonly radius: number; readonly standoff: number; readonly inset: number; readonly bottom: number };
     readonly numberPanel: { readonly width: number; readonly height: number; readonly depth: number; readonly centreAboveFFL: number };
     readonly wallLight: { readonly width: number; readonly height: number; readonly depth: number; readonly centreAboveFFL: number };
   };
@@ -123,13 +126,13 @@ export interface ArchitectureConfig {
     readonly tread: number;
     readonly landingDepth: number;
     readonly width: number;
-    readonly canopy: { readonly depth: number; readonly thickness: number; readonly underside: number };
+    readonly canopy: { readonly depth: number; readonly thickness: number; readonly underside: number }; // underside above FFL
   };
   readonly roof: {
     readonly finish: number; // waterproofing + screed + tile
     readonly parapetHeight: number; // above roof finish
     readonly coping: { readonly thickness: number; readonly overhang: number };
-    readonly enclosure: { readonly height: number; readonly slab: number; readonly southZ: number };
+    readonly enclosure: { readonly height: number; readonly slab: number; readonly slabOverhang: number; readonly southZ: number };
     readonly outlet: { readonly radius: number };
   };
   readonly stairFinish: {
@@ -169,6 +172,7 @@ export const ARCH_CONFIG: ArchitectureConfig = {
     MD: { width: 1.05, height: 2.1, leaves: 1, leafMaterial: "timber_door_teak", glazed: false },
     BD: { width: 0.75, height: 2.1, leaves: 1, leafMaterial: "laminate_door_wet", glazed: false },
     SD: { width: 0.75, height: 2.1, leaves: 1, leafMaterial: "metal_frame", glazed: false },
+    RD: { width: 0.9, height: 2.1, leaves: 1, leafMaterial: "metal_frame", glazed: false },
     ED: { width: 1.8, height: 2.4, leaves: 2, leafMaterial: "metal_frame", glazed: true },
     OP: { width: 2.8, height: 2.1, leaves: 0, leafMaterial: "", glazed: false },
   },
@@ -222,9 +226,10 @@ export const ARCH_CONFIG: ArchitectureConfig = {
   facade: {
     fin: { thickness: 0.2, depth: 0.6 },
     band: { projection: 0.05 },
+    sunshade: { depth: 0.45, thickness: 0.075, overhang: 0.1 },
     plinth: { thickness: 0.03, module: 0.6, capHeight: 0.05 },
-    downpipe: { radius: 0.05, standoff: 0.03 },
-    numberPanel: { width: 0.6, height: 0.3, depth: 0.02, centreAboveFFL: 2.7 },
+    downpipe: { radius: 0.05, standoff: 0.06, inset: 0.6, bottom: 0.15 },
+    numberPanel: { width: 0.16, height: 0.5, depth: 0.015, centreAboveFFL: 1.9 },
     wallLight: { width: 0.12, height: 0.25, depth: 0.1, centreAboveFFL: 2.3 },
   },
   entrance: {
@@ -232,13 +237,13 @@ export const ARCH_CONFIG: ArchitectureConfig = {
     tread: 0.3,
     landingDepth: 1.5,
     width: 3.6,
-    canopy: { depth: 2.0, thickness: 0.15, underside: 2.75 },
+    canopy: { depth: 2.0, thickness: 0.15, underside: 2.7 },
   },
   roof: {
     finish: 0.05,
     parapetHeight: 1.0,
     coping: { thickness: 0.05, overhang: 0.03 },
-    enclosure: { height: 2.7, slab: 0.12, southZ: -4.8 },
+    enclosure: { height: 2.7, slab: 0.12, slabOverhang: 0.15, southZ: -4.8 },
     outlet: { radius: 0.06 },
   },
   stairFinish: { tread: 0.05, riser: 0.015, balustradeHeight: 0.9, baluster: 0.02, handrailRadius: 0.025, dadoHeight: 1.2 },

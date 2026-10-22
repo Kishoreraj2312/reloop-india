@@ -1,5 +1,5 @@
 /**
- * Viewer — Canvas, lighting, controls, camera framing and the structural model.
+ * Viewer — Canvas, lighting, controls, camera framing and the building model.
  * frameloop is "demand": nothing renders unless the camera, selection or scene changes.
  */
 
@@ -12,8 +12,11 @@ import { CameraRig } from "./CameraRig";
 import { DevHooks } from "./DevHooks";
 import { clipFor, unionBounds, type ViewContext, type ViewName } from "./framing";
 import { Lighting } from "./Lighting";
+import { EnvironmentLight } from "./EnvironmentLight";
 import { SelectionOutline } from "./SelectionOutline";
-import { StructuralModel } from "./StructuralModel";
+import { BuildingModel } from "./BuildingModel";
+import { SiteGround } from "./SiteGround";
+import type { ViewState } from "./viewState";
 
 export const BACKGROUND = "#e9ecef";
 const FOV = 40;
@@ -22,18 +25,15 @@ interface ViewerProps {
   records: readonly ComponentRecord[];
   cfg?: BuildingConfig;
   view?: ViewName;
-  /** Dev inspector: when provided, clicking a member selects it (and empty space clears). */
+  viewState: ViewState;
+  /** When provided, clicking a component selects it (and empty space clears). */
   onSelect?: (id: string | null) => void;
   selectedId?: string | null;
+  /** Dev hook: lets the browser verification script change the view state. */
+  onViewState?: (v: ViewState) => void;
 }
 
-export function Viewer({
-  records,
-  cfg = DEFAULT_CONFIG,
-  view = "full",
-  onSelect,
-  selectedId = null,
-}: ViewerProps) {
+export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState, onSelect, selectedId = null, onViewState }: ViewerProps) {
   const bounds = useMemo(() => unionBounds(records), [records]);
   const { ctx, groundY, gridSize } = useMemo(() => {
     const grid = buildGrid(cfg);
@@ -61,26 +61,20 @@ export function Viewer({
       frameloop="demand"
       shadows
       dpr={[1, 2]}
-      camera={{ fov: FOV, near: 0.5, far: 400, position: [60, 40, 60] }}
+      camera={{ fov: FOV, near: 0.2, far: 400, position: [60, 40, 60] }}
       gl={{ antialias: true }}
       onPointerMissed={onSelect ? () => onSelect(null) : undefined}
     >
       <color attach="background" args={[BACKGROUND]} />
+      <EnvironmentLight intensity={0.4} />
       <Lighting bounds={bounds} />
-      <StructuralModel records={records} onSelect={onSelect} clip={clip} />
+      <BuildingModel records={records} onSelect={onSelect} clip={clip} view={viewState} />
+      <SiteGround visible={viewState.isolate !== "FDN"} />
       <gridHelper args={[gridSize, gridSize, 0x9aa1a8, 0xc3c8cd]} position={[0, groundY, 0]} />
-      <OrbitControls
-        makeDefault
-        enableDamping
-        dampingFactor={0.12}
-        minDistance={4}
-        maxDistance={180}
-        minPolarAngle={0}
-        maxPolarAngle={Math.PI / 2 - 0.03}
-      />
+      <OrbitControls makeDefault enableDamping dampingFactor={0.12} minDistance={1} maxDistance={180} minPolarAngle={0} maxPolarAngle={Math.PI / 2 - 0.03} />
       <CameraRig view={view} bounds={bounds} ctx={ctx} />
       <SelectionOutline selectedId={selectedId} />
-      {onSelect && import.meta.env.DEV && <DevHooks records={records} onSelect={onSelect} />}
+      {onSelect && import.meta.env.DEV && <DevHooks records={records} onSelect={onSelect} onViewState={onViewState} />}
     </Canvas>
   );
 }

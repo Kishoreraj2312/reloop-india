@@ -8,6 +8,7 @@ import { useThree } from "@react-three/fiber";
 import type { Camera, Scene, WebGLRenderer } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ComponentRecord } from "@/building/structure";
+import type { ViewState } from "./viewState";
 
 export interface RenderStats {
   drawCalls: number;
@@ -18,6 +19,8 @@ export interface RenderStats {
   textures: number;
   programs: number;
   meshes: number;
+  instancedMeshes: number;
+  instances: number;
 }
 
 export interface ReloopDebug {
@@ -26,6 +29,8 @@ export interface ReloopDebug {
   scene: Scene;
   camera: Camera;
   select(id: string | null): void;
+  /** Replace the layer / floor view state (as the controls panel would). */
+  setViewState?(v: ViewState): void;
   /** Move the camera (and orbit target) and render; for close-up inspection. */
   setView(position: readonly [number, number, number], target: readonly [number, number, number]): void;
   /** Force one render and report renderer.info; with shadow = true the frame includes the shadow pass. */
@@ -41,9 +46,10 @@ declare global {
 interface DevHooksProps {
   records: readonly ComponentRecord[];
   onSelect: (id: string | null) => void;
+  onViewState?: (v: ViewState) => void;
 }
 
-export function DevHooks({ records, onSelect }: DevHooksProps) {
+export function DevHooks({ records, onSelect, onViewState }: DevHooksProps) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -68,8 +74,15 @@ export function DevHooks({ records, onSelect }: DevHooksProps) {
       gl.info.autoReset = auto;
       const { render, memory, programs } = gl.info;
       let meshes = 0;
+      let instancedMeshes = 0;
+      let instances = 0;
       scene.traverse((o) => {
         if ((o as { isMesh?: boolean }).isMesh) meshes++;
+        const im = o as { isInstancedMesh?: boolean; count?: number };
+        if (im.isInstancedMesh) {
+          instancedMeshes++;
+          instances += im.count ?? 0;
+        }
       });
       return {
         drawCalls: render.calls,
@@ -80,13 +93,15 @@ export function DevHooks({ records, onSelect }: DevHooksProps) {
         textures: memory.textures,
         programs: programs?.length ?? 0,
         meshes,
+        instancedMeshes,
+        instances,
       };
     };
-    window.__reloop = { records, gl, scene, camera, select: onSelect, stats, setView };
+    window.__reloop = { records, gl, scene, camera, select: onSelect, stats, setView, ...(onViewState ? { setViewState: onViewState } : {}) };
     return () => {
       delete window.__reloop;
     };
-  }, [gl, scene, camera, controls, invalidate, records, onSelect]);
+  }, [gl, scene, camera, controls, invalidate, records, onSelect, onViewState]);
 
   return null;
 }

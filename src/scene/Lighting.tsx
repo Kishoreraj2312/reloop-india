@@ -44,10 +44,10 @@ export function Lighting({ bounds }: LightingProps) {
 
   return (
     <>
-      <hemisphereLight args={[SKY, GROUND, 1.15]} />
+      <hemisphereLight args={[SKY, GROUND, 0.55]} />
       <directionalLight
         position={offset}
-        intensity={2.4}
+        intensity={2.7}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-half}

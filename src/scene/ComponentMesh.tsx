@@ -11,6 +11,7 @@ import { memo, useEffect, useMemo, useRef } from "react";
 import type { BufferGeometry, Material, Mesh } from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { registry } from "@/building/registry";
+import { visibleInScene } from "./arch/InstancedBatch";
 import type { ComponentRecord } from "@/building/structure";
 
 interface ComponentMeshProps {
@@ -52,6 +53,7 @@ export const ComponentMesh = memo(function ComponentMesh({
       onClick={
         onSelect
           ? (e: ThreeEvent<MouseEvent>) => {
+              if (!visibleInScene(e.object)) return; // hidden layers do not catch clicks
               e.stopPropagation();
               onSelect(record.id);
             }

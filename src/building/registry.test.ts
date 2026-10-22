@@ -79,4 +79,16 @@ describe("ComponentRegistry", () => {
     reg.unlinkMesh("m1");
     expect(reg.getIdByMesh("m1")).toBeUndefined();
   });
+
+  it("links instanced meshes both ways and unlinks them", () => {
+    reg.register(makeComponent("ARC-WIN-F01-A1-LIV-S-01-GLZ01", { system: "architecture" }));
+    reg.register(makeComponent("ARC-WIN-F01-A1-LIV-S-01-GLZ02", { system: "architecture" }));
+    reg.linkInstances("mesh-1", ["ARC-WIN-F01-A1-LIV-S-01-GLZ01", "ARC-WIN-F01-A1-LIV-S-01-GLZ02"]);
+    expect(reg.getIdByMesh("mesh-1", 1)).toBe("ARC-WIN-F01-A1-LIV-S-01-GLZ02");
+    expect(reg.getInstance("ARC-WIN-F01-A1-LIV-S-01-GLZ01")).toEqual({ meshUuid: "mesh-1", index: 0 });
+    expect(() => reg.linkInstances("mesh-2", ["nope"])).toThrow();
+    reg.unlinkInstances("mesh-1");
+    expect(reg.getIdByMesh("mesh-1", 1)).toBeUndefined();
+    expect(reg.linkedInstanceCount).toBe(0);
+  });
 });

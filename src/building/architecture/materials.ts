@@ -52,8 +52,8 @@ export const ARCH_MATERIALS: readonly ArchMaterial[] = Object.freeze([
   m("masonry_paint_core", "brick masonry, plastered, core paint (light grey)", "brick_masonry", { color: 0xd9dad6, roughness: 0.94, metalness: 0 }),
   m("lintel_rcc_ext", "RCC lintel, plastered, exterior paint", "concrete", { color: 0xe4ddd1, roughness: 0.92, metalness: 0 }),
   m("lintel_rcc_int", "RCC lintel, plastered, interior paint", "concrete", { color: 0xecebe6, roughness: 0.95, metalness: 0 }),
-  m("concrete_fin", "precast concrete fin (GRC finish)", "concrete", { color: 0x8f8a83, roughness: 0.85, metalness: 0 }),
-  m("concrete_band", "floor band cladding, textured paint", "concrete", { color: 0xcfc6b8, roughness: 0.9, metalness: 0 }),
+  m("concrete_fin", "precast concrete fin (GRC finish)", "concrete", { color: 0x7e776e, roughness: 0.85, metalness: 0 }),
+  m("concrete_band", "floor band / column cladding, textured paint", "concrete", { color: 0xc8bca9, roughness: 0.9, metalness: 0 }),
   m("concrete_balcony", "RCC balcony / canopy slab, plastered", "concrete", { color: 0xdcd5c9, roughness: 0.9, metalness: 0 }),
   m("plaster_soffit", "soffit plaster, exterior paint", "cement_screed", { color: 0xeeeae2, roughness: 0.95, metalness: 0 }),
   // Stone and tiles
@@ -66,7 +66,7 @@ export const ARCH_MATERIALS: readonly ArchMaterial[] = Object.freeze([
   m("tile_wall_ceramic", "glazed ceramic wall tile (white)", "ceramic_tile", { color: 0xf3f2ee, roughness: 0.25, metalness: 0 }),
   m("tile_backsplash", "glazed backsplash tile (sage)", "ceramic_tile", { color: 0xb7c2b0, roughness: 0.25, metalness: 0 }),
   m("tile_balcony", "terracotta-tone outdoor tile", "ceramic_tile", { color: 0xb88d6e, roughness: 0.75, metalness: 0 }),
-  m("roof_finish", "roof waterproofing + screed + white reflective tile", "bitumen_membrane", { color: 0xd6d4cf, roughness: 0.85, metalness: 0 }),
+  m("roof_finish", "roof waterproofing + screed + white reflective tile", "bitumen_membrane", { color: 0xcac7c0, roughness: 0.85, metalness: 0 }),
   // Joinery and metals
   m("timber_door_teak", "teak-veneer flush door", "timber", { color: 0x7a5236, roughness: 0.6, metalness: 0 }),
   m("timber_door_light", "light oak-veneer flush door", "timber", { color: 0xb08c64, roughness: 0.62, metalness: 0 }),

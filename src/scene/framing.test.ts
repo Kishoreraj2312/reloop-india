@@ -103,16 +103,17 @@ describe("scene tree", () => {
   });
 
   it("places every record exactly once", () => {
-    const ids = tree.flatMap((f) => f.assemblies.flatMap((a) => a.records.map((r) => r.id)));
+    const ids = tree.flatMap((f) => f.systems.flatMap((s) => s.assemblies.flatMap((a) => a.records.map((r) => r.id))));
     expect(ids).toHaveLength(records.length);
     expect(new Set(ids).size).toBe(records.length);
   });
 
   it("puts footings in FDN and roof-level beams/slabs in the roof assembly", () => {
-    const fdn = tree.find((f) => f.floor === "FDN")!;
+    const fdn = tree.find((f) => f.floor === "FDN")!.systems[0]!;
+    expect(fdn.system).toBe("structure");
     expect(fdn.assemblies.map((a) => a.assembly)).toEqual(["footings"]);
     expect(fdn.assemblies[0]!.records).toHaveLength(84);
-    const roof = tree.find((f) => f.floor === "ROOF")!;
+    const roof = tree.find((f) => f.floor === "ROOF")!.systems[0]!;
     expect(roof.assemblies.map((a) => a.assembly)).toEqual(["roof"]);
     expect(roof.assemblies[0]!.records).toHaveLength(71 + 36); // roof beams + slab pieces (roof stair opening)
   });

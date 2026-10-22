@@ -1,18 +1,24 @@
 /**
- * Dev-only selection feedback: an edge outline plus a faint tint on the selected
- * component. Both are children of the selected mesh, so they follow its transform.
+ * Selection feedback: an edge outline plus a faint tint on the selected component. For a
+ * plain mesh both are children of the mesh; for an instanced component they are children
+ * of its InstancedMesh carrying the instance matrix. Selecting an assembly highlights all
+ * of its children. Nothing here writes to records or instance buffers.
  */
 
 import { useEffect } from "react";
 import {
   DoubleSide,
   EdgesGeometry,
+  InstancedMesh,
   LineBasicMaterial,
   LineSegments,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
+  type Object3D,
 } from "three";
 import { useThree } from "@react-three/fiber";
+import { registry } from "@/building/registry";
 
 const ACCENT = 0xff5a1f;
 
@@ -22,30 +28,51 @@ export function SelectionOutline({ selectedId }: { selectedId: string | null }) 
 
   useEffect(() => {
     if (!selectedId) return;
-    const target = scene.getObjectByName(selectedId);
-    if (!(target instanceof Mesh)) return;
-
-    const edges = new EdgesGeometry(target.geometry, 20);
+    const sel = registry.getById(selectedId);
+    if (!sel) return;
+    const drawn = scene.getObjectByName(selectedId) instanceof Mesh || registry.getInstance(selectedId) !== undefined;
+    const targets = drawn ? [selectedId] : registry.getChildren(sel.id).map((c) => c.id); // an assembly: its children
     const lineMat = new LineBasicMaterial({ color: ACCENT, depthTest: false, transparent: true });
-    const lines = new LineSegments(edges, lineMat);
-    const tintMat = new MeshBasicMaterial({
-      color: ACCENT,
-      transparent: true,
-      opacity: 0.35,
-      depthTest: false,
-      side: DoubleSide,
-    });
-    const tint = new Mesh(target.geometry, tintMat); // shares the geometry: not disposed here
-    for (const o of [lines, tint]) {
-      o.renderOrder = 999;
-      o.raycast = () => undefined; // never intercept clicks
-      o.name = `${selectedId}__selection`;
-      target.add(o);
+    const tintMat = new MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.35, depthTest: false, side: DoubleSide });
+    const added: { parent: Object3D; objs: Object3D[]; edges: EdgesGeometry }[] = [];
+    const edgeCache = new Map<string, EdgesGeometry>();
+    for (const id of targets) {
+      let parent: Object3D | undefined;
+      let geometry;
+      let matrix: Matrix4 | null = null;
+      const plain = scene.getObjectByName(id);
+      if (plain instanceof Mesh) {
+        parent = plain;
+        geometry = plain.geometry;
+      } else {
+        const inst = registry.getInstance(id);
+        const mesh = inst && scene.getObjectByProperty("uuid", inst.meshUuid);
+        if (!(mesh instanceof InstancedMesh)) continue;
+        parent = mesh;
+        geometry = mesh.geometry;
+        matrix = new Matrix4();
+        mesh.getMatrixAt(inst!.index, matrix);
+      }
+      let edges = edgeCache.get(geometry.uuid);
+      if (!edges) edgeCache.set(geometry.uuid, (edges = new EdgesGeometry(geometry, 20)));
+      const lines = new LineSegments(edges, lineMat);
+      const tint = new Mesh(geometry, tintMat); // shares the geometry: not disposed here
+      for (const o of [lines, tint]) {
+        o.renderOrder = 999;
+        o.raycast = () => undefined; // never intercept clicks
+        o.name = `${id}__selection`;
+        if (matrix) {
+          o.matrixAutoUpdate = false;
+          o.matrix.copy(matrix);
+        }
+        parent.add(o);
+      }
+      added.push({ parent, objs: [lines, tint], edges });
     }
     invalidate();
     return () => {
-      target.remove(lines, tint);
-      edges.dispose();
+      for (const a of added) a.parent.remove(...a.objs);
+      for (const e of edgeCache.values()) e.dispose();
       lineMat.dispose();
       tintMat.dispose();
       invalidate();

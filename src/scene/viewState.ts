@@ -1,0 +1,89 @@
+/**
+ * View state for layers, floor isolation and the ceilings toggle (pure).
+ *
+ * The 3D tree is never re-rendered for a toggle: `groupVisibility` maps every hierarchy
+ * group name to a boolean and the viewer applies it imperatively (group.visible).
+ */
+
+import type { ArchCategory } from "@/building/structure";
+import type { FloorKey } from "./SceneHierarchy";
+import { FLOOR_ORDER } from "./sceneTree";
+
+export const LAYERS = [
+  "structure",
+  "exteriorWalls",
+  "interiorWalls",
+  "openings",
+  "flooring",
+  "ceilings",
+  "fixtures",
+  "balconiesFacade",
+  "roof",
+] as const;
+export type LayerKey = (typeof LAYERS)[number];
+
+export const LAYER_LABELS: Readonly<Record<LayerKey, string>> = {
+  structure: "Structure",
+  exteriorWalls: "Exterior walls",
+  interiorWalls: "Interior walls",
+  openings: "Doors & windows",
+  flooring: "Flooring & stair finishes",
+  ceilings: "Ceilings",
+  fixtures: "Fixtures",
+  balconiesFacade: "Balconies & facade",
+  roof: "Roof",
+};
+
+export const CATEGORY_LAYER: Readonly<Record<ArchCategory, LayerKey>> = {
+  exteriorWalls: "exteriorWalls",
+  partitions: "interiorWalls",
+  openings: "openings",
+  floors: "flooring",
+  stairFinishes: "flooring",
+  ceilings: "ceilings",
+  fixtures: "fixtures",
+  balconies: "balconiesFacade",
+  facade: "balconiesFacade",
+  roof: "roof",
+};
+
+export interface ViewState {
+  readonly layers: Readonly<Record<LayerKey, boolean>>;
+  /** Isolated floor (others hidden), or null for the whole building. */
+  readonly isolate: FloorKey | null;
+  /** Ceilings shown while a floor is isolated (hidden by default in cutaway). */
+  readonly ceilingsInIsolation: boolean;
+  /** Per-floor visibility when not isolating. */
+  readonly floors: Readonly<Record<FloorKey, boolean>>;
+}
+
+export const DEFAULT_VIEW: ViewState = {
+  layers: Object.fromEntries(LAYERS.map((l) => [l, true])) as Record<LayerKey, boolean>,
+  isolate: null,
+  ceilingsInIsolation: false,
+  floors: Object.fromEntries(FLOOR_ORDER.map((f) => [f, true])) as Record<FloorKey, boolean>,
+};
+
+export function floorVisible(v: ViewState, floor: FloorKey): boolean {
+  if (v.isolate) return floor === v.isolate;
+  return v.floors[floor];
+}
+
+export function categoryVisible(v: ViewState, category: ArchCategory): boolean {
+  const layer = CATEGORY_LAYER[category];
+  if (!v.layers[layer]) return false;
+  if (layer === "ceilings" && v.isolate && !v.ceilingsInIsolation) return false;
+  return true;
+}
+
+/** Visibility of every named hierarchy group: Floor_X, X_structure, X_architecture, X_architecture_<category>. */
+export function groupVisibility(v: ViewState, categories: readonly ArchCategory[]): Map<string, boolean> {
+  const m = new Map<string, boolean>();
+  for (const f of FLOOR_ORDER) {
+    m.set(`Floor_${f}`, floorVisible(v, f));
+    m.set(`${f}_structure`, v.layers.structure);
+    m.set(`${f}_architecture`, true);
+    for (const c of categories) m.set(`${f}_architecture_${c}`, categoryVisible(v, c));
+  }
+  return m;
+}
