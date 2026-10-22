@@ -25,6 +25,8 @@ export interface RouteOptions {
   readonly minLeg?: number;
   /** Validity of the fittings the path creates at its ends (legs already there + the new leg). */
   readonly endsOk?: (first: V3, last: V3) => boolean;
+  /** Skip the (slower) visibility search; only straight, L and Z/U shapes. */
+  readonly noGrid?: boolean;
 }
 
 const EPS = 1e-7;
@@ -150,54 +152,100 @@ export function routeOrtho(a: P2, b: P2, obstacles: readonly PlanRect[], opt: Ro
   if (best) return best;
   for (const m of candidates(a, b, half, near, region, 0, 3, opt.minLeg)) consider([a, [m, a[1]], [m, b[1]], b]);
   for (const m of candidates(a, b, half, near, region, 1, 3, opt.minLeg)) consider([a, [a[0], m], [b[0], m], b]);
-  if (best) return best;
+  if (best || opt.noGrid) return best;
   const g = gridSearch(a, b, near, opt);
   if (!g || !pathOk(g, half, near, region, opt.minLeg)) return null;
   if (opt.endsOk && !opt.endsOk(legTo(g[0]!, g[1]!), legTo(g[g.length - 1]!, g[g.length - 2]!))) return null;
   return g;
 }
 
-/** Orthogonal visibility search over candidate coordinates (fallback). */
+/** Uniform plan buckets over obstacle rectangles (fast segment tests in the fallback search). */
+class Buckets {
+  private readonly cells = new Map<number, PlanRect[]>();
+  constructor(obs: readonly PlanRect[], private readonly size = 0.5) {
+    for (const o of obs) for (const k of this.keys(o)) (this.cells.get(k) ?? this.cells.set(k, []).get(k)!).push(o);
+  }
+  private keys(r: PlanRect): number[] {
+    const out: number[] = [];
+    const i0 = Math.floor(r.x0 / this.size);
+    const i1 = Math.floor(r.x1 / this.size);
+    const j0 = Math.floor(r.z0 / this.size);
+    const j1 = Math.floor(r.z1 / this.size);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) out.push(i * 100003 + j);
+    return out;
+  }
+  blocked(r: PlanRect): boolean {
+    for (const k of this.keys(r)) for (const o of this.cells.get(k) ?? []) if (hit(r, o)) return true;
+    return false;
+  }
+}
+
+/** Orthogonal visibility search over candidate coordinates (fallback): Dijkstra with bend cost. */
 function gridSearch(a: P2, b: P2, obstacles: readonly PlanRect[], opt: RouteOptions): P2[] | null {
   const bend = opt.bendCost ?? 0.25;
-  const xs = candidates(a, b, opt.half, obstacles, opt.region, 0, 4);
-  const zs = candidates(a, b, opt.half, obstacles, opt.region, 1, 4);
+  const xs = candidates(a, b, opt.half, obstacles, opt.region, 0, 4, opt.minLeg);
+  const zs = candidates(a, b, opt.half, obstacles, opt.region, 1, 4, opt.minLeg);
   const nx = xs.length;
   const nz = zs.length;
+  if (nx * nz > 250000) return null;
+  const buckets = new Buckets(obstacles);
   const id = (i: number, j: number) => j * nx + i;
-  const ia = xs.indexOf(a[0]);
-  const ja = zs.indexOf(a[1]);
-  const ib = xs.indexOf(b[0]);
-  const jb = zs.indexOf(b[1]);
-  // dist[node * 2 + dir]: dir 0 = arrived moving along x, 1 = along z
+  const start = id(xs.indexOf(a[0]), zs.indexOf(a[1]));
+  const goal = id(xs.indexOf(b[0]), zs.indexOf(b[1]));
   const N = nx * nz;
-  const distA = new Float64Array(N * 2).fill(Infinity);
+  const dist = new Float64Array(N * 2).fill(Infinity);
   const prev = new Int32Array(N * 2).fill(-1);
-  const open: number[] = [];
-  const start = id(ia, ja);
-  distA[start * 2] = 0;
-  distA[start * 2 + 1] = 0;
-  open.push(start * 2, start * 2 + 1);
-  const done = new Uint8Array(N * 2);
-  while (open.length) {
-    let k = 0;
-    for (let t = 1; t < open.length; t++) if (distA[open[t]!]! < distA[open[k]!]!) k = t;
-    const s = open.splice(k, 1)[0]!;
-    if (done[s]) continue;
-    done[s] = 1;
-    const node = s >> 1;
-    const dir = s & 1;
-    const i = node % nx;
-    const j = (node - i) / nx;
-    if (node === id(ib, jb)) {
+  // binary heap of [cost, state]
+  const heap: [number, number][] = [];
+  const push = (c: number, st: number) => {
+    heap.push([c, st]);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (heap[p]![0] <= heap[i]![0]) break;
+      [heap[p], heap[i]] = [heap[i]!, heap[p]!];
+      i = p;
+    }
+  };
+  const pop = (): [number, number] => {
+    const top = heap[0]!;
+    const last = heap.pop()!;
+    if (heap.length) {
+      heap[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = 2 * i + 1;
+        const r = l + 1;
+        let m = i;
+        if (l < heap.length && heap[l]![0] < heap[m]![0]) m = l;
+        if (r < heap.length && heap[r]![0] < heap[m]![0]) m = r;
+        if (m === i) break;
+        [heap[m], heap[i]] = [heap[i]!, heap[m]!];
+        i = m;
+      }
+    }
+    return top;
+  };
+  dist[start * 2] = 0;
+  dist[start * 2 + 1] = 0;
+  push(0, start * 2);
+  push(0, start * 2 + 1);
+  const blockedEdge = new Map<number, boolean>();
+  while (heap.length) {
+    const [c0, st] = pop();
+    if (c0 > dist[st]!) continue;
+    const node = st >> 1;
+    const dir = st & 1;
+    if (node === goal) {
       const pts: P2[] = [];
-      for (let c = s; c >= 0; c = prev[c]!) {
+      for (let c = st; c >= 0; c = prev[c]!) {
         const nn = c >> 1;
         pts.push([xs[nn % nx]!, zs[(nn - (nn % nx)) / nx]!]);
-        if (c === start * 2 || c === start * 2 + 1) break;
       }
       return simplify(pts.reverse());
     }
+    const i = node % nx;
+    const j = (node - i) / nx;
     const steps: [number, number, 0 | 1][] = [
       [i + 1, j, 0],
       [i - 1, j, 0],
@@ -206,15 +254,23 @@ function gridSearch(a: P2, b: P2, obstacles: readonly PlanRect[], opt: RouteOpti
     ];
     for (const [ni, nj, nd] of steps) {
       if (ni < 0 || nj < 0 || ni >= nx || nj >= nz) continue;
-      const p: P2 = [xs[i]!, zs[j]!];
-      const q: P2 = [xs[ni]!, zs[nj]!];
-      if (segBlocked(p, q, opt.half, obstacles) || !inRegion(p, q, opt.region)) continue;
-      const c = distA[s]! + Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + (nd !== dir && node !== start ? bend : 0);
-      const t = id(ni, nj) * 2 + nd;
-      if (c < distA[t]! - 1e-12) {
-        distA[t] = c;
-        prev[t] = s;
-        open.push(t);
+      const nn = id(ni, nj);
+      const ek = Math.min(node, nn) * 2 + nd + Math.max(node, nn) * 2 * N;
+      let bl = blockedEdge.get(ek);
+      if (bl === undefined) {
+        const p: P2 = [xs[i]!, zs[j]!];
+        const q: P2 = [xs[ni]!, zs[nj]!];
+        bl = buckets.blocked(segRect(p, q, opt.half)) || !inRegion(p, q, opt.region);
+        blockedEdge.set(ek, bl);
+      }
+      if (bl) continue;
+      const len = Math.abs(xs[i]! - xs[ni]!) + Math.abs(zs[j]! - zs[nj]!);
+      const c = c0 + len + (nd !== dir && node !== start ? bend : 0);
+      const t = nn * 2 + nd;
+      if (c < dist[t]! - 1e-12) {
+        dist[t] = c;
+        prev[t] = st;
+        push(c, t);
       }
     }
   }
@@ -383,8 +439,8 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
     cands.sort((p, q) => manhattan(t.p, p.at) + cdepth(p) - manhattan(t.p, q.at) - cdepth(q));
     const statics = [...obstacles, ...pointObstacles(t.key)];
     let best: { cand: Cand; path: P2[]; cost: number } | null = null;
-    const tryCands = (list: Cand[]) => {
-      for (const c of list) {
+    const tryCands = (list: Cand[], gridFor: number) => {
+      for (const [ci, c] of list.entries()) {
         const depth = dw * (c.kind === "vertex" ? rootDist[c.v]! : rootDist[segs[c.seg]![0]]! + manhattan(pts[segs[c.seg]![0]]!.p, c.at));
         if (best && manhattan(t.p, c.at) + depth >= best.cost) continue;
         const open =
@@ -398,7 +454,7 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
           const nl = [...endLegs, last];
           return legsOk(nl) || (c.kind === "vertex" && c.v === 0 && !!opt.rootCross && crossOk(nl));
         };
-        const path = routeOrtho(t.p, c.at, [...statics, ...treeObstacles(open)], { ...opt, minLeg: leg, endsOk, half: t.half ?? opt.half });
+        const path = routeOrtho(t.p, c.at, [...statics, ...treeObstacles(open)], { ...opt, minLeg: leg, endsOk, half: t.half ?? opt.half, noGrid: ci >= gridFor });
         if (!path) continue;
         // Fittings at both ends must stay valid.
         const first = legTo(path[0]!, path[1]!);
@@ -420,8 +476,8 @@ export function buildTree(root: { p: P2; legs: readonly V3[] }, terms: readonly 
         if (!best || cst < best.cost - 1e-9) best = { cand: c, path, cost: cst };
       }
     };
-    tryCands(cands.slice(0, 10));
-    if (!best) tryCands(cands.slice(10));
+    tryCands(cands.slice(0, 10), 2);
+    if (!best) tryCands(cands.slice(10), 1);
     if (!best) {
       unresolved.push(t.key);
       continue;

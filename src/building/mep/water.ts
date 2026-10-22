@@ -199,7 +199,7 @@ function commonWater(ctx: MepContext, sh: { x0: number; x1: number; z0: number; 
   const oIn = net.node([DOWN[0], yO, DOWN[1]]);
   net.run([oW, mv, oN, oIn], spec(gRoof, dist, P.gi65, { label: "DN65 GI down-take (roof)" }));
   // Down-take with one branch per storey
-  const Zh = -4.2;
+  const Zh = C.headerZ;
   const takeoffs: TakeOff[] = [];
   let dPrev = oIn;
   const slabMid = (L: number) => ctx.d.slabTop(L) - ctx.cfg.slab.thickness / 2;
@@ -211,9 +211,9 @@ function commonWater(ctx: MepContext, sh: { x0: number; x1: number; z0: number; 
     const tn = net.node([DOWN[0], yb, DOWN[1]]);
     net.edge(cross, tn, spec(gFloor(s), dist, P.gi65, { componentType: "down_take", label: "DN65 GI down-take (shaft)" }));
     dPrev = tn;
-    const gv = net.node([DOWN[0], yb, sh.z0 + 0.2], { part: valve(gFloor(s), dist, "valve-gate", `floor isolation valve ${ftag(s)}`, P.gi40.nominal, [0, 1, 0]) });
+    const gv = net.node([DOWN[0], yb, sh.z0 + 0.2], { part: valve(gFloor(s), dist, "valve-gate", `floor isolation valve ${ftag(s)}`, P.gi32.nominal, [0, 1, 0]) });
     const hn = net.node([DOWN[0], yb, Zh]);
-    net.run([tn, gv, hn], spec(gFloor(s), dist, P.gi40, { label: "DN40 GI floor branch" }));
+    net.run([tn, gv, hn], spec(gFloor(s), dist, P.gi32, { label: "DN32 GI floor branch" }));
     takeoffs.push(...header(ctx, net, gFloor(s), dist, s, hn, [DOWN[0], Zh], yb, spec, valve));
   }
   net.emit(ctx.drafts);
@@ -293,13 +293,13 @@ function header(
   const out: TakeOff[] = [];
   const west = tos.filter((t) => t.x < at[0]).sort((a, b) => b.x - a.x);
   const east = tos.filter((t) => t.x > at[0]).sort((a, b) => a.x - b.x);
-  const g40 = MEP_CONFIG.pipe.gi40;
+  const g40 = MEP_CONFIG.pipe.gi32;
   const g25 = MEP_CONFIG.pipe.gi25;
   for (const side of [west, east]) {
     let prev = hIn;
     for (const t of side) {
       const n = net.node([t.x, y, at[1]]);
-      net.edge(prev, n, spec(g, dist, g40, { componentType: "pipe_header", label: "DN40 GI corridor header" }));
+      net.edge(prev, n, spec(g, dist, g40, { componentType: "pipe_header", label: "DN32 GI corridor header" }));
       prev = n;
       const dir = t.north ? 1 : -1;
       const rv = g25.od / 2;
@@ -421,6 +421,7 @@ function apartmentWater(ctx: MepContext, t: TakeOff): void {
   // Root: the take-off continues from the meter through the corridor wall into the flat's void.
   const net = new Net();
   const meterNode = net.node(t.at, { record: t.meter });
+  // meter -> through the corridor wall into the flat's ceiling void (same layer as the header)
   const q0: V3 = [t.at[0], yC, t.wallFace + t.into[2] * 0.2];
   const root = net.node(q0);
   const region =

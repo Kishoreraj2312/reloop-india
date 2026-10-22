@@ -14,6 +14,7 @@ import { createContext, type Endpoint, type NetworkInfo, type Unresolved } from 
 import { generateDrainage, type Stack } from "./drainage";
 import { generateRainwater } from "./rainwater";
 import { generateWater } from "./water";
+import { generateElectrical } from "./electrical";
 
 export interface MepModel {
   readonly records: readonly ComponentRecord[];
@@ -28,6 +29,7 @@ export function generateMep(cfg: BuildingConfig): MepModel {
   const drainage = generateDrainage(ctx);
   generateRainwater(ctx);
   generateWater(ctx);
+  generateElectrical(ctx);
   const records = ctx.drafts.finalize();
   return {
     records,

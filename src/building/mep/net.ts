@@ -158,7 +158,7 @@ export class Net {
       const fit = n.record ? null : (n.part ?? autoPart(inc, legs));
       if (fit && fit !== "none") {
         n.emitted = emitFitting(drafts, n.p, fit, inc, legs).id;
-      } else if (fit === null && !n.record && inc.length === 1 && inc[0]!.spec.kind !== "cable") {
+      } else if (fit === null && !n.record && inc.length === 1 && inc[0]!.spec.kind !== "cable" && inc[0]!.spec.kind !== "tray" && inc[0]!.spec.kind !== "strip") {
         throw new Error(`MEP: open end at ${n.p.map((v) => v.toFixed(3)).join(",")} (${inc[0]!.spec.group.id})`);
       }
       const hub = n.record ?? n.emitted;
@@ -191,7 +191,7 @@ type AutoPart = NodePart | "none" | null;
 function autoPart(inc: Edge[], legs: V3[]): AutoPart {
   const kind = inc[0]!.spec.kind;
   const types = FITTING_TYPES[kind];
-  if (inc.length === 1) return null; // open end (cables end on devices; pipes must not)
+  if (inc.length === 1) return null; // open end (cables end on devices, trays and strips may simply stop; pipes must not)
   const ax = legs.map(axisDir);
   if (inc.length === 2) {
     if (dot(ax[0]!, ax[1]!) < -0.999) return "none"; // straight joint

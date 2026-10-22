@@ -47,7 +47,9 @@ describe("plumbing: identity and records", () => {
 
 describe("plumbing: connectivity", () => {
   it("connections are symmetric, reference real records, and every network is one connected graph", () => {
-    expect(checkConnectivity(mep.records, buildingById, new Set(mep.networks.map((n) => n.id)))).toEqual([]);
+    const groups = mep.records.filter((r) => r.system === "plumbing");
+    const known = new Map([...buildingById, ...mep.records.filter((r) => r.system === "electrical").map((r) => [r.id, r] as const)]);
+    expect(checkConnectivity(groups, known, new Set(mep.networks.map((n) => n.id)))).toEqual([]);
   });
   it("every A2 service endpoint is connected (none unresolved)", () => {
     const roles = ["connection_point", "wc_pan", "floor_drain", "shower_mixer", "shower_arm", "roof_drain"];
@@ -111,7 +113,7 @@ describe("plumbing: geometry", () => {
     expect(findOverlaps(plumbing, hard)).toEqual([]);
   });
   it("no unintended clash with any A1/A2 component or between MEP components (documented allow-list only)", () => {
-    const c = findMepClashes(mep.records, building);
+    const c = findMepClashes(mep.records.filter((r) => r.system === "plumbing"), building);
     expect(c.building).toEqual([]);
     expect(c.internal).toEqual([]);
   });

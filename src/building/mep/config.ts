@@ -20,10 +20,12 @@ export const MEP_DISCLAIMER =
 export const MEP_CONFIG = {
   /** Gap kept between unrelated services and between services and structure. */
   clearance: 0.02,
-  /** Zone A layer centrelines above the storey slab top. */
-  layers: { lighting: 2.895, power: 2.93, cold: 2.975, hot: 3.035, submain: 3.072 },
-  /** Cable tray bottom above the storey slab top (corridor, services room, shaft branches). */
-  trayBottom: 3.01,
+  /** Zone A layer centrelines above the storey slab top (common water header sits under the tray). */
+  layers: { lighting: 2.89, power: 2.92, cold: 2.962, hot: 3.035, submain: 3.075 },
+  /** Cable tray bottom above the storey slab top; tray centreline in the corridor (z). */
+  trayBottom: 2.99,
+  trayZ: -3.5,
+  headerZ: -4.3,
   /** Zone B for drains hanging below slab s: between the wall tops and the slab soffit. */
   drainZone: { aboveWallTop: 0.03, belowSoffit: 0.03 },
   /** Ground floor drains below the L0 slab (soil), and the underground building drain. */
@@ -41,6 +43,7 @@ export const MEP_CONFIG = {
     cpvc25: { od: 0.0286, nominal: "1 in (25 mm) CPVC" },
     // GI medium class
     gi25: { od: 0.0337, nominal: "DN25 GI" },
+    gi32: { od: 0.0424, nominal: "DN32 GI" },
     gi40: { od: 0.0483, nominal: "DN40 GI" },
     gi50: { od: 0.0603, nominal: "DN50 GI" },
     gi65: { od: 0.0761, nominal: "DN65 GI" },
@@ -74,7 +77,7 @@ export const MEP_CONFIG = {
   conduit: {
     lighting: { od: 0.02, nominal: "20 mm PVC conduit" },
     power: { od: 0.025, nominal: "25 mm PVC conduit" },
-    submain: { od: 0.032, nominal: "32 mm PVC conduit" },
+    submain: { od: 0.025, nominal: "25 mm PVC conduit (submain)" },
   },
   cable: {
     lighting: { od: 0.008, nominal: "3 x 1.5 sq mm Cu FR PVC" },
