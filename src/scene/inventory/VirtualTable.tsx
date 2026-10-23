@@ -40,10 +40,10 @@ const MIDDLE: readonly Column[] = [
   { key: "dimensions", label: "Dimensions", width: 120 },
 ];
 const RIGHT: readonly Column[] = [
-  { key: "quantity", label: "Quantity", width: 70, align: "right" },
+  { key: "quantity", label: "Quantity", width: 80, align: "right" },
   { key: "unit", label: "Unit", width: 40 },
-  { key: "status", label: "Status", width: 74 },
-  { key: "issues", label: "Issues", width: 50, align: "right" },
+  { key: "status", label: "Status", width: 82 },
+  { key: "issues", label: "Issues", width: 56, align: "right" },
 ];
 const COLUMNS: readonly Column[] = [...LEFT, ...MIDDLE, ...RIGHT];
 const TOTAL_WIDTH = COLUMNS.reduce((s, c) => s + c.width, 0);

@@ -160,3 +160,16 @@ discrete items `nr`. Geometry kind `part` = catalogue unit mesh fitted to the re
 (`mep/parts.ts`). Materials: `mep/materials.ts`, looked up with A2's through `materialLibrary.ts`.
 Scene categories: plumbing `water, hotWater, drainage, vent, rainwater`; electrical
 `distribution, lighting, power, containment, earthing`.
+
+---
+
+## Quantities (B1)
+
+Quantities are not stored on records (beyond the generator's own `quantity` + `unit`); they are derived by the quantity
+engine, `src/engine/quantities/`, documented in [QUANTITY_ENGINE.md](QUANTITY_ENGINE.md). For every leaf record the
+engine returns a primary quantity in the record's unit (cross-checked against `record.quantity`), derived measures, an
+estimated mass where the material has a density, a status (`calculated` / `estimated` / `unavailable`), the method, the
+assumptions, structured issues and the source component ids. Assemblies (`geometry.kind === "group"`) are counted as
+one item and never summed; their parts carry the physical quantities. The reserved B-phase fields
+(`densityKgM3`, `estimatedMassKg`, `assumptions`, `source`) are still unused: the density table lives in
+`materialProps.ts` keyed by `materialId`, and passports (B2) will attach to it.

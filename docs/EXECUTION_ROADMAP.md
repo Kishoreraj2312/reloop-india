@@ -15,7 +15,7 @@
 ### Part B — Engineering & Circularity
 | Phase | Goal |
 |-------|------|
-| B1 | Quantity engine & material inventory from geometry |
+| B1 | Quantity engine & material inventory from geometry — ✅ Done (see B1 Results) |
 | B2 | Material passports & recovery assessment |
 | B3 | Removal simulation with dependency logic |
 | B4 | Demolition vs deconstruction scenarios |
@@ -28,6 +28,64 @@
 | C2 | Dashboard with metrics & charts |
 | C3 | Optional reporting & bounded AI assistance |
 | C4 | End-to-end testing & expo readiness |
+
+---
+
+## B1 Results — Quantity Takeoff & Material Inventory
+Method, rules, identities and the density table: `QUANTITY_ENGINE.md`. Audit (counts, code-vs-brief differences,
+componentType table): `B1_AUDIT.md`. Screenshots: `docs/screenshots/b1/`.
+
+**Delivered.** `src/engine/quantities/` (pure engine) + the inspector's takeoff block + the Inventory drawer
+(`src/scene/inventory/`, opened from the controls panel). One engine: the UI only filters, sorts and renders the
+memoised `getModelInventory()`.
+
+**Scope note.** The brief described A1 + A2 (51,494 records); the code also contains A3 MEP, so the app registers
+**87,380 records** (84,365 leaves). The engine covers all of them; the identities are tested on STR + ARC and on the full
+model.
+
+**Building totals (default config, full model, leaves only)**
+| Category | Quantity | Status |
+|---|---|---|
+| Concrete (A1 1,490.873 + A2 119.805 + 0.225 MEP plinth) | 1,610.902 m3 (lintels 14.386 inside) | calculated; reinforcement not modelled |
+| Masonry (net, as built) | 1,332.235 m3 (wall gross 1,451.058 = net 1,282.049 in walls + lintel 14.355 + 439 voids 154.655) | calculated |
+| Floor tile / screed | 5,093.01 / 4,939.47 m2 (rooms only: 4,886.29 tile ≤ 4,939.47 screed ≤ 5,041.24 clear) | calculated |
+| Ceilings / wall tiles / skirting / glazing | 5,041.78 m2 / 1,447.74 m2 / 2,929.77 m / 235.44 m2 | calculated |
+| Pipes / cables (route length) | 3,861.24 m / 12,013.01 m | calculated |
+| Estimated mass | 6,934.82 t, covers 92.5 % of the modelled solid volume (concrete 3,866 t, masonry 2,398 t, finishes the rest) | estimated; 46,057 components have no mass |
+| Products | 264 doors (+5 cased openings), 171 windows, 29 kitchens, 79 WC, 79 basins, 63 shower trays, 29 washers, 24 balconies, 15 stair balustrades, 1,186 light fittings; 1,713 balusters and 168 posts as segments | calculated |
+
+**Unavailable / not modelled:** reinforcement, structural steel, MEP pipe wall and conductor size, plaster/paint, mortar,
+formwork (listed in the drawer, never 0). Mass is `unavailable` (documented, `info` issue) for hollow/assembled items drawn
+as solid boxes: sanitaryware, cabinets, appliances, light fittings, aluminium frames, flush doors, railings, pipes, cables,
+MEP parts. **Issues:** 0 record mismatches over 84,365 leaves, 0 unclassified types, 1 warning (the roof-access door is
+hosted by the roof enclosure, not a wall: `UNLINKED_OPENING`, no total affected).
+
+**Verification actually run**
+- `npm run typecheck` clean; `npm test` 305 tests / 16 files pass (new: 61 tests in 2 files: 35 unit + 26 on the real model incl. the 6
+  reconciliation identities); `npm run build` passes (bundle 1,446 kB, 422 kB gzipped; chunk-size warning only). No lint
+  tool exists (none added).
+- Engine build 0.37 s for the 87,380 records in Vitest (< 1.5 s required); a full A1 + A2 build 0.21 s.
+- Browser (`npm run verify:browser:b1`, headless Chrome, Apple M3 Pro): the drawer opens by a real click; **draw calls 1,556
+  and 9,007,734 triangles before and after opening it** (unchanged); filters (floor F02 + concrete = 362 rows, all
+  match), sort, search ("STR-COL" = 210), card drill-down (lintels = 440 rows), row click → same id in the inspector's ID
+  line, parent select, CSV export (362 data rows = filtered count, RFC 4180 parse OK) and a clean console. UI cross-checks:
+  945 STR members, 210 columns 153.090 m3, 42 footings 100.800, 42 pedestals 13.608, 426 beams 353.047, 210 slab panels
+  863.291. A1, A2 and A3 browser scripts still pass.
+- Test change: `vitest.config.ts` now has `testTimeout: 30000`: A3's regeneration-determinism test takes ~6.5 s on this
+  machine and failed the 5 s default at HEAD, before any B1 code.
+
+**Known limitations.** Densities are typical values not verified against the standards; the table's "assumed" rows say
+so. Wall face area is volume / thickness. Table sort on Quantity ignores units (filter by category first). The drawer
+overlays the right 560 px of the 3D view. The first selection after load may wait for the idle-time inventory build
+(~0.4 s). The Products and Estimated-mass cards do not drill down (assemblies are not table rows; there is no "has mass"
+filter).
+
+**First task for B2:** create `src/engine/passports/passport.ts`, a pure function
+`buildPassports(inventory: Inventory): Map<string, MaterialPassport>` that, for every leaf row, joins the engine's
+`ComponentQuantities` (primary quantity, mass and status, `sourceIds`) with its `materialId` and `MATERIAL_PROPS` entry
+into one passport record (`componentId`, `materialId`, `quantity`, `massKg | null`, `confidence` mapped from status and
+basis, `assumptions`, `issues`), with tests written first: one passport per leaf, passports for the 46,057 mass-less
+leaves keep `massKg: null` (never 0), and Σ passport mass = the inventory's mass total. No UI and no recovery rules yet.
 
 ---
 
