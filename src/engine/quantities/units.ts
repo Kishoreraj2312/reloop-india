@@ -50,7 +50,7 @@ export function formatTonnes(kg: number | null): string {
   return groupFmt(TONNE_DECIMALS).format(kgToTonnes(kg));
 }
 
-/** Plain decimal for CSV (no separators), same precision as the display. */
-export function csvValue(value: number | null, unit: Unit): string {
-  return value === null || !Number.isFinite(value) ? "" : value.toFixed(UNIT_DECIMALS[unit]);
+/** Plain decimal for CSV (no separators, up to 6 decimals so exports can be re-summed). Unknown stays empty. */
+export function csvValue(value: number | null): string {
+  return value === null || !Number.isFinite(value) ? "" : String(Number(value.toFixed(6)));
 }

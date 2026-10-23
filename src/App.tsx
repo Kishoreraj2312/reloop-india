@@ -69,7 +69,7 @@ export default function App() {
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <Viewer records={records} view={params.view} viewState={viewState} onSelect={handleSelect} selectedId={selectedId} onViewState={setViewState} clipOverride={params.clip} traceIds={trace} />
       <ComponentInspector selectedId={selectedId} onSelect={handleSelect} onTrace={setTrace} traced={trace.length} />
-      <ControlsPanel view={viewState} onChange={setViewState} onReset={reset} />
+      <ControlsPanel view={viewState} onChange={setViewState} onReset={reset} onSelect={handleSelect} selectedId={selectedId} />
     </div>
   );
 }

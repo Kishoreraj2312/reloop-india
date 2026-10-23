@@ -107,7 +107,7 @@ export function buildSummary(inv: Inventory): Summary {
     categoryCard(rows, "concrete", "Concrete", "concrete", "m3", "plain volume; reinforcement not modelled"),
     categoryCard(rows, "masonry", "Masonry (net)", "masonry", "m3", "as built: openings are not in the pieces"),
     card({ key: "lintels", label: "Lintels", value: lintels.value, unit: "m3", status: lintels.status, incompleteCount: lintels.incompleteCount, note: "RCC, counted within Concrete", filter: { componentTypes: lintelTypes } }),
-    categoryCard(rows, "tile_floor", "Floor tiles", "tile_floor", "m2", "tile faces; grout joints are gaps"),
+    categoryCard(rows, "tile_floor", "Floor tiles", "tile_floor", "m2", "tile faces (grout joints are gaps); incl. balcony and roof-enclosure tile"),
     categoryCard(rows, "screed", "Screed", "screed", "m2"),
     categoryCard(rows, "ceiling_board", "Ceilings", "ceiling_board", "m2", "gypsum board incl. coves and fascia"),
     categoryCard(rows, "tile_wall", "Wall tiles", "tile_wall", "m2", "wet-wall tiles and kitchen backsplash"),
@@ -162,14 +162,14 @@ const CONCRETE_COLUMNS: readonly { key: string; label: string; types: readonly s
 
 const dash = (v: number | null) => v;
 
-/** Concrete (m3) by floor × member type; the last column is every other concrete component (lintels, balconies, fins, ...). */
+/** Concrete (m3) by floor × member type; "Other*" is every other concrete component (lintels, balconies, fins, canopies, ...). */
 export function concreteTable(inv: Inventory): BreakdownTable {
   const concrete = inv.rows.filter((r) => r.q.category === "concrete");
   const known = new Set(CONCRETE_COLUMNS.flatMap((c) => c.types));
   const cell = (floor: number | null, pick: (r: InventoryRow) => boolean) => sumMeasure(concrete, "m3", (r) => (floor === null || r.rec.floor === floor) && pick(r)).value;
   const cols = [
     ...CONCRETE_COLUMNS.map((c) => ({ key: c.key, label: c.label, unit: "m3" as const, pick: (r: InventoryRow) => c.types.includes(r.rec.componentType) })),
-    { key: "other", label: "Other (lintels, balconies, fins…)", unit: "m3" as const, pick: (r: InventoryRow) => !known.has(r.rec.componentType) },
+    { key: "other", label: "Other*", unit: "m3" as const, pick: (r: InventoryRow) => !known.has(r.rec.componentType) },
   ];
   const all = (floor: number | null) => cols.map((c) => dash(cell(floor, c.pick)));
   const rowTotal = (floor: number | null) => sumMeasure(concrete, "m3", (r) => floor === null || r.rec.floor === floor).value;
@@ -181,7 +181,7 @@ export function concreteTable(inv: Inventory): BreakdownTable {
 export function masonryTable(inv: Inventory): BreakdownTable {
   const masonry = inv.rows.filter((r) => r.q.category === "masonry");
   const wallsOf = (floor: number | null) => inv.walls.filter((w) => floor === null || w.floor === floor);
-  const sum = (xs: readonly (number | null)[]) => (xs.some((x) => x === null) ? null : xs.reduce<number>((s, x) => s + (x ?? 0), 0));
+  const sum = (xs: readonly (number | null)[]) => (xs.length === 0 || xs.some((x) => x === null) ? null : xs.reduce<number>((s, x) => s + (x ?? 0), 0));
   const col = (floor: number | null) => {
     const w = wallsOf(floor);
     return [

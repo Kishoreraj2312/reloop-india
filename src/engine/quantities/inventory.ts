@@ -234,25 +234,49 @@ export function dimensionsLabel(rec: ComponentRecord): string {
 
 const warningCount = (q: ComponentQuantities) => q.primary.issues.filter((i) => i.severity === "warning").length + q.mass.issues.filter((i) => i.severity === "warning").length;
 
+/** Sort key of a row for a column (computed once per row, not once per comparison). */
+function sortKey(r: InventoryRow, column: SortColumn): string | number {
+  switch (column) {
+    case "id":
+      return r.rec.id;
+    case "name":
+      return r.rec.name;
+    case "floor":
+      return r.rec.floor;
+    case "system":
+      return r.rec.system;
+    case "category":
+      return r.q.category;
+    case "material":
+      return r.rec.materialId;
+    case "dimensions":
+      return dimensionsLabel(r.rec);
+    case "quantity":
+      return r.q.primary.value ?? -Infinity;
+    case "unit":
+      return r.q.primary.unit;
+    case "status":
+      return STATUS_RANK[r.q.primary.status];
+    case "issues":
+      return warningCount(r.q);
+  }
+}
+
+/** Stable sort; ties break on id so the order is deterministic. */
 export function sortRows(rows: readonly InventoryRow[], column: SortColumn, dir: "asc" | "desc" = "asc"): InventoryRow[] {
   const sign = dir === "asc" ? 1 : -1;
-  const num = (f: (r: InventoryRow) => number) => (a: InventoryRow, b: InventoryRow) => f(a) - f(b);
-  const str = (f: (r: InventoryRow) => string) => (a: InventoryRow, b: InventoryRow) => (f(a) < f(b) ? -1 : f(a) > f(b) ? 1 : 0);
-  const cmp: Record<SortColumn, (a: InventoryRow, b: InventoryRow) => number> = {
-    id: str((r) => r.rec.id),
-    name: str((r) => r.rec.name),
-    floor: num((r) => r.rec.floor),
-    system: str((r) => r.rec.system),
-    category: str((r) => r.q.category),
-    material: str((r) => r.rec.materialId),
-    dimensions: str((r) => dimensionsLabel(r.rec)),
-    quantity: num((r) => r.q.primary.value ?? -Infinity),
-    unit: str((r) => r.q.primary.unit),
-    status: num((r) => STATUS_RANK[r.q.primary.status]),
-    issues: num((r) => warningCount(r.q)),
-  };
-  const f = cmp[column];
-  return [...rows].sort((a, b) => sign * f(a, b) || (a.rec.id < b.rec.id ? -1 : a.rec.id > b.rec.id ? 1 : 0));
+  const keys = rows.map((r) => sortKey(r, column));
+  const order = rows.map((_, i) => i);
+  order.sort((a, b) => {
+    const ka = keys[a]!;
+    const kb = keys[b]!;
+    const c = ka < kb ? -1 : ka > kb ? 1 : 0;
+    if (c !== 0) return sign * c;
+    const ia = rows[a]!.rec.id;
+    const ib = rows[b]!.rec.id;
+    return ia < ib ? -1 : ia > ib ? 1 : 0;
+  });
+  return order.map((i) => rows[i]!);
 }
 
 /** Leaf descendants of an assembly (the assembly itself when it is a leaf), depth-first. */

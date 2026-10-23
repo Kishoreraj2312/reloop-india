@@ -3,16 +3,20 @@
  * ceilings toggle for cutaway, and one "Reset view" action.
  */
 
+import { useState } from "react";
 import type { FloorKey } from "./SceneHierarchy";
+import { DRAWER_WIDTH, InventoryDrawer } from "./inventory/InventoryDrawer";
 import { FLOOR_ORDER } from "./sceneTree";
 import { DEFAULT_VIEW, LAYERS, LAYER_LABELS, MEP_CATEGORY_LABELS, type ViewState } from "./viewState";
 import { ELECTRICAL_CATEGORIES, PLUMBING_CATEGORIES } from "@/building/structure";
 
 const FLOOR_LABELS: Record<FloorKey, string> = { FDN: "Foundation", L0: "Ground", L1: "F01", L2: "F02", L3: "F03", L4: "F04", ROOF: "Roof" };
 
-export function ControlsPanel({ view, onChange, onReset }: { view: ViewState; onChange: (v: ViewState) => void; onReset: () => void }) {
+export function ControlsPanel({ view, onChange, onReset, onSelect, selectedId }: { view: ViewState; onChange: (v: ViewState) => void; onReset: () => void; onSelect: (id: string | null) => void; selectedId: string | null }) {
+  const [inventoryOpen, setInventoryOpen] = useState(false); // local: opening the drawer never touches the scene
   return (
-    <div data-testid="controls" style={panel}>
+    <>
+    <div data-testid="controls" style={inventoryOpen ? { ...panel, right: DRAWER_WIDTH + 12 } : panel}>
       <div style={{ opacity: 0.55, fontSize: 10, letterSpacing: 0.4, marginBottom: 4 }}>LAYERS</div>
       {LAYERS.map((l) => (
         <label key={l} style={row}>
@@ -64,7 +68,12 @@ export function ControlsPanel({ view, onChange, onReset }: { view: ViewState; on
       <button data-testid="reset" onClick={onReset} disabled={view === DEFAULT_VIEW} style={{ marginTop: 8, font: "inherit", width: "100%" }}>
         Reset view
       </button>
+      <button data-testid="inventory-toggle" onClick={() => setInventoryOpen((o) => !o)} aria-pressed={inventoryOpen} style={{ marginTop: 4, font: "inherit", width: "100%", fontWeight: inventoryOpen ? 700 : 400 }}>
+        Inventory
+      </button>
     </div>
+    {inventoryOpen && <InventoryDrawer onClose={() => setInventoryOpen(false)} onSelect={onSelect} selectedId={selectedId} />}
+    </>
   );
 }
 

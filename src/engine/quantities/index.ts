@@ -36,6 +36,7 @@ export {
   masonryTable,
   measureIn,
   sumMeasure,
+  unitLabel,
   FLOOR_LABEL,
   type BreakdownTable,
   type CategoryCountRow,
@@ -43,3 +44,4 @@ export {
   type SummaryCard,
   type SummaryLine,
 } from "./summary";
+export { CSV_COLUMNS, csvField, csvRecord, parseCsv, rowsToCsv } from "./csv";

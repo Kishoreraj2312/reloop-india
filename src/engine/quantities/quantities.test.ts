@@ -9,10 +9,19 @@ import {
   computeComponent,
   countProducts,
   csvValue,
+  CSV_COLUMNS,
+  csvField,
+  filterRows,
   formatTonnes,
   formatValue,
+  parseCsv,
   qty,
+  rowsToCsv,
+  SORT_COLUMNS,
+  sortRows,
+  totalOf,
   wallTakeoffs,
+  type SortColumn,
   HOLLOW_TYPES,
   MATERIAL_PROPS,
 } from "./index";
@@ -213,7 +222,8 @@ describe("units", () => {
     expect(formatValue(1749.6, "kg")).toBe("1,750");
     expect(formatTonnes(1749.6)).toBe("1.75");
     expect(formatValue(null, "m3")).toBe("Not available");
-    expect(csvValue(null, "m")).toBe("");
+    expect(csvValue(null)).toBe("");
+    expect(csvValue(1234.5678912)).toBe("1234.567891");
   });
 });
 
@@ -350,5 +360,65 @@ describe("wall takeoff (hand-checked: 5.0 m wall, 3.1 m high, 0.23 m thick, one 
     const w = wallTakeoffs(records).walls[0]!;
     expect(w.gross.value).toBeNull();
     close(w.net.value, 12.08 * T);
+  });
+});
+
+describe("query helpers and CSV", () => {
+  const recs = [
+    rec({ id: "STR-COL-F01-A1", componentType: "column", geometry: box(0.45, 3.6, 0.45), quantity: 0.729, floor: 1, system: "structure" }),
+    rec({ id: "ARC-TILE-F02-X", componentType: "floor_tile", geometry: box(0.6, 0.01, 0.4), unit: "m2", quantity: 0.24, floor: 2, materialId: "tile_porcelain_floor" }),
+    rec({ id: "ARC-TILE-F02-Y", componentType: "floor_tile", geometry: box(0.3, 0.01, 0.3), unit: "m2", quantity: 0.09, floor: 2, materialId: "tile_antiskid" }),
+    { ...rec({ id: 'ARC-FIX-G-"quoted", name', componentType: "wc_pan", geometry: box(0.4, 0.4, 0.6), unit: "nr", quantity: 1, materialId: "sanitary_ceramic" }), name: 'WC "pan", white\nsecond line' },
+  ];
+  const inv = buildInventory(recs);
+
+  it("filters by floor, category, material, status and text (case-insensitive on id / name)", () => {
+    expect(filterRows(inv.rows, { floor: 2 })).toHaveLength(2);
+    expect(filterRows(inv.rows, { floor: 2, category: "tile_floor" })).toHaveLength(2);
+    expect(filterRows(inv.rows, { material: "tile_antiskid" }).map((r) => r.rec.id)).toEqual(["ARC-TILE-F02-Y"]);
+    expect(filterRows(inv.rows, { system: "structure" })).toHaveLength(1);
+    expect(filterRows(inv.rows, { status: "calculated" })).toHaveLength(4);
+    expect(filterRows(inv.rows, { status: "estimated" })).toHaveLength(0);
+    expect(filterRows(inv.rows, { text: "str-col" })).toHaveLength(1);
+    expect(filterRows(inv.rows, { text: "PAN" })).toHaveLength(1); // matches the name
+    expect(filterRows(inv.rows, { componentTypes: ["column", "wc_pan"] })).toHaveLength(2);
+  });
+
+  it("sorts by any column, stably and deterministically", () => {
+    const ids = (c: SortColumn, d: "asc" | "desc") => sortRows(inv.rows, c, d).map((r) => r.rec.id);
+    expect(ids("id", "asc")).toEqual([...ids("id", "asc")].sort());
+    expect(ids("quantity", "desc")).toEqual(["ARC-FIX-G-\"quoted\", name", "STR-COL-F01-A1", "ARC-TILE-F02-X", "ARC-TILE-F02-Y"]); // numeric, whatever the unit
+    expect(ids("quantity", "asc")[0]).toBe("ARC-TILE-F02-Y");
+    expect(ids("floor", "desc")[0]).toMatch(/F02/);
+    for (const c of SORT_COLUMNS) expect(sortRows(inv.rows, c, "asc")).toHaveLength(4);
+    expect(ids("unit", "asc")).toEqual(ids("unit", "asc"));
+  });
+
+  it("footer totals of a filtered set are per unit", () => {
+    const t = totalOf(filterRows(inv.rows, { floor: 2 }));
+    close(t.totals.m2!.value, 0.33);
+    expect(t.totals.nr).toBeUndefined();
+  });
+
+  it("CSV: RFC 4180 quoting round-trips, one record per row, empty cell for unknown", () => {
+    const csv = rowsToCsv(inv.rows);
+    const table = parseCsv(csv);
+    expect(table).toHaveLength(1 + inv.rows.length);
+    expect(table[0]).toEqual([...CSV_COLUMNS]);
+    expect(table.every((r) => r.length === CSV_COLUMNS.length)).toBe(true);
+    const wc = table.find((r) => r[0]!.startsWith("ARC-FIX"))!;
+    expect(wc[0]).toBe('ARC-FIX-G-"quoted", name');
+    expect(wc[1]).toBe('WC "pan", white\nsecond line');
+    expect(wc[CSV_COLUMNS.indexOf("mass_kg")]).toBe(""); // unavailable, not 0
+    expect(wc[CSV_COLUMNS.indexOf("mass_status")]).toBe("unavailable");
+    const col = table.find((r) => r[0] === "STR-COL-F01-A1")!;
+    expect(col[CSV_COLUMNS.indexOf("quantity")]).toBe("0.729");
+    expect(col[CSV_COLUMNS.indexOf("unit")]).toBe("m3");
+    expect(col[CSV_COLUMNS.indexOf("floor")]).toBe("F01");
+    expect(col[CSV_COLUMNS.indexOf("mass_kg")]).toBe("1749.6");
+    expect(csv.endsWith("\r\n")).toBe(true);
+    expect(csvField("a,b")).toBe('"a,b"');
+    expect(csvField('say "hi"')).toBe('"say ""hi"""');
+    expect(csvField("plain")).toBe("plain");
   });
 });
