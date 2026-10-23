@@ -3,5 +3,6 @@ import { resolve } from "path";
 
 export default defineConfig({
   resolve: { alias: { "@": resolve(__dirname, "src") } },
-  test: { environment: "node" },
+  // A3's regeneration-determinism test needs ~6.5 s on a loaded machine (default 5 s timed out at HEAD).
+  test: { environment: "node", testTimeout: 30_000 },
 });
