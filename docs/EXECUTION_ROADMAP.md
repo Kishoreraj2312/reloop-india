@@ -16,7 +16,7 @@
 | Phase | Goal |
 |-------|------|
 | B1 | Quantity engine & material inventory from geometry — ✅ Done (see B1 Results) |
-| B2 | Material passports & recovery assessment |
+| B2 | Material passports & recovery assessment — ✅ Done (recovery assessment; see B2 Results) |
 | B3 | Removal simulation with dependency logic |
 | B4 | Demolition vs deconstruction scenarios |
 | B5 | Environmental & economic estimates |
@@ -28,6 +28,42 @@
 | C2 | Dashboard with metrics & charts |
 | C3 | Optional reporting & bounded AI assistance |
 | C4 | End-to-end testing & expo readiness |
+
+---
+
+## B2 Results — Material Recovery & Reuse Assessment
+Method, formula, data model and limits: `RECOVERY_ASSESSMENT.md`. Screenshots: `docs/screenshots/b2/`.
+
+**Delivered.** `src/engine/recovery/` (pure: assessment model, `Available × Recovery %`, recovery inventory, persistence
+codec, generic suggestions) and `src/scene/recovery/` (Recovery drawer opened from the controls panel or the inspector, assessment
+editor, bulk planning, recovery inventory, 3D colour overlay, inspector line). B1 quantities are the only source of quantities;
+assessments are a separate sparse map saved to `localStorage` (the app had no persistence before).
+
+**Decisions.** Loss is not a second factor: one recovery % defined as net of loss, loss kept as a note (no double counting).
+No recovery rates are supplied: every % is the user's, and the generic per-category suggestions (classification, method,
+pathway) carry no numbers and apply only on request. Unavailable figures read "Not available" with the reason, never 0.
+
+**Verification actually run**
+- `npm run typecheck` clean; `npm test` 329 tests / 17 files pass (new: 24 in `recovery.test.ts`); `npm run build` passes
+  (bundle 1,486 kB, 432 kB gzipped; chunk-size warning only). No lint tool exists (none added).
+- Hand-calculated cases (tests and in the browser): column 0.729 m³ × 60 % = 0.4374 m³; tile 0.2259645 m² × 50 %; drain stack
+  0.375 m × 25 % = 0.09375 m; WC pan 1 nr × 100 %; column mass 1,749.6 kg × 60 % = 1,049.76 kg. Invalid % (-3, 120, NaN, text)
+  rejected; missing %, no quantity and no mass give "Not available". Grouping identities: Σ groups = total per unit for all five
+  groupings; units never mixed; an assembly edit assesses each of its parts once.
+- Browser (`npm run verify:browser:b2`, headless Chrome): real click opens the drawer (draw calls unchanged); hand calculation in
+  the UI; inventory row updates (concrete m³ recoverable 0.437); persistence across a reload; colouring on/off restores the
+  original materials; status, floor and material filters (others pale in 3D); row click → inspector id; floor isolation with the
+  overlay on; assembly (26 of 26 parts) and filtered bulk edits (4,799 floor tiles); mass basis (kg only); reset; console clean.
+- B1 and A1–A3 browser scripts re-run: see the final report.
+
+**Known limitations.** Assessments are per browser (no export/import). Colour mode and basis are not saved. Suggestions are
+generic and unvalidated. "To assess" excludes components classified for recovery that still lack a %. Mass basis covers only
+components with a density. No cost, carbon or landfill figures (no reliable inputs).
+
+**First task for B3:** create `src/engine/removal/sequence.ts`, a pure function that, given the A1–A3 `dependencies` /
+`connectedTo` / `parentId` relations and a set of component ids chosen for removal, returns the components that must be removed
+first (dependants) and those left unsupported, with tests written first on a column, a wall with a window and a plumbing stack. No
+UI and no time or cost model yet.
 
 ---
 

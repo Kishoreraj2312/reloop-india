@@ -15,6 +15,7 @@ import { Lighting } from "./Lighting";
 import { EnvironmentLight } from "./EnvironmentLight";
 import { SelectionOutline } from "./SelectionOutline";
 import { BuildingModel } from "./BuildingModel";
+import { RecoveryColoring } from "./recovery/RecoveryColoring";
 import { SiteGround } from "./SiteGround";
 import type { ViewState } from "./viewState";
 
@@ -78,6 +79,7 @@ export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState
       <gridHelper args={[gridSize, gridSize, 0x9aa1a8, 0xc3c8cd]} position={[0, groundY, 0]} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} minDistance={1} maxDistance={180} minPolarAngle={0} maxPolarAngle={Math.PI / 2 - 0.03} />
       <CameraRig view={view} bounds={bounds} ctx={ctx} />
+      <RecoveryColoring clipKey={clip ? `${clip.axis}:${clip.value}` : ""} xray={!!viewState.xray} />
       <SelectionOutline selectedId={selectedId} {...(traceIds ? { traceIds } : {})} />
       {onSelect && import.meta.env.DEV && <DevHooks records={records} onSelect={onSelect} onViewState={onViewState} />}
     </Canvas>

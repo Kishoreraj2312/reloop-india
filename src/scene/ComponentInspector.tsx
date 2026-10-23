@@ -8,6 +8,7 @@ import { registry } from "@/building/registry";
 import { hasMaterial, materialById } from "@/building/materialLibrary";
 import { STRUCTURAL_MATERIAL } from "@/building/structure";
 import { QuantityInfo, usePrewarmInventory } from "./QuantityInfo";
+import { RecoveryInfo } from "./recovery/RecoveryInfo";
 
 const FLOOR_NAMES: Record<number, string> = { [-1]: "Foundation", 0: "Ground (G)", 1: "F01", 2: "F02", 3: "F03", 4: "F04", 5: "Roof" };
 
@@ -59,6 +60,7 @@ export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }
           <Row k="quantity" v={`${fmt(c.quantity)} ${c.unit}`} />
           <Row k="confidence" v={c.confidence} />
           <QuantityInfo id={c.id} />
+          <RecoveryInfo id={c.id} />
           {c.networkId && <Row k="network" v={c.networkId} />}
           {c.nominalSize && <Row k="size" v={c.nominalSize} />}
           {c.gradient !== undefined && <Row k="fall" v={`1 in ${Math.round(1 / c.gradient)}`} />}

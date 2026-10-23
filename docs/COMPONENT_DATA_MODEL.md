@@ -173,3 +173,12 @@ assumptions, structured issues and the source component ids. Assemblies (`geomet
 one item and never summed; their parts carry the physical quantities. The reserved B-phase fields
 (`densityKgM3`, `estimatedMassKg`, `assumptions`, `source`) are still unused: the density table lives in
 `materialProps.ts` keyed by `materialId`, and passports (B2) will attach to it.
+
+---
+
+## Recovery assessment (B2)
+
+User assessments are not record fields. They are a separate sparse map keyed by leaf component id (`classification`,
+`recoveryPct`, `preparation`, `destination`, `lossNote`, `note`), persisted in the browser, and combined with the B1
+quantities by `src/engine/recovery/`. The record's own `condition`, `recoveryRoute` and `confidence` placeholders are still
+untouched. See [RECOVERY_ASSESSMENT.md](RECOVERY_ASSESSMENT.md).

@@ -14,7 +14,8 @@
     "plans": "vite-node scripts/plans/drawPlans.ts",
     "verify:browser:a2": "node scripts/browser/verifyA2.mjs",
     "verify:browser:a3": "node scripts/browser/verifyA3.mjs",
-    "verify:browser:b1": "node scripts/browser/verifyB1.mjs"
+    "verify:browser:b1": "node scripts/browser/verifyB1.mjs",
+    "verify:browser:b2": "node scripts/browser/verifyB2.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.1.2",

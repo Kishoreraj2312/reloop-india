@@ -6,6 +6,8 @@
 import { useState } from "react";
 import type { FloorKey } from "./SceneHierarchy";
 import { DRAWER_WIDTH, InventoryDrawer } from "./inventory/InventoryDrawer";
+import { RecoveryDrawer } from "./recovery/RecoveryDrawer";
+import { recoveryStore, useRecovery } from "./recovery/recoveryStore";
 import { FLOOR_ORDER } from "./sceneTree";
 import { DEFAULT_VIEW, LAYERS, LAYER_LABELS, MEP_CATEGORY_LABELS, type ViewState } from "./viewState";
 import { ELECTRICAL_CATEGORIES, PLUMBING_CATEGORIES } from "@/building/structure";
@@ -14,9 +16,11 @@ const FLOOR_LABELS: Record<FloorKey, string> = { FDN: "Foundation", L0: "Ground"
 
 export function ControlsPanel({ view, onChange, onReset, onSelect, selectedId }: { view: ViewState; onChange: (v: ViewState) => void; onReset: () => void; onSelect: (id: string | null) => void; selectedId: string | null }) {
   const [inventoryOpen, setInventoryOpen] = useState(false); // local: opening the drawer never touches the scene
+  const recoveryOpen = useRecovery().open; // the drawer can also be opened from the inspector
+  const drawerOpen = inventoryOpen || recoveryOpen;
   return (
     <>
-    <div data-testid="controls" style={inventoryOpen ? { ...panel, right: DRAWER_WIDTH + 12 } : panel}>
+    <div data-testid="controls" style={drawerOpen ? { ...panel, right: DRAWER_WIDTH + 12 } : panel}>
       <div style={{ opacity: 0.55, fontSize: 10, letterSpacing: 0.4, marginBottom: 4 }}>LAYERS</div>
       {LAYERS.map((l) => (
         <label key={l} style={row}>
@@ -68,11 +72,15 @@ export function ControlsPanel({ view, onChange, onReset, onSelect, selectedId }:
       <button data-testid="reset" onClick={onReset} disabled={view === DEFAULT_VIEW} style={{ marginTop: 8, font: "inherit", width: "100%" }}>
         Reset view
       </button>
-      <button data-testid="inventory-toggle" onClick={() => setInventoryOpen((o) => !o)} aria-pressed={inventoryOpen} style={{ marginTop: 4, font: "inherit", width: "100%", fontWeight: inventoryOpen ? 700 : 400 }}>
+      <button data-testid="inventory-toggle" onClick={() => { recoveryStore.setOpen(false); setInventoryOpen((o) => !o); }} aria-pressed={inventoryOpen} style={{ marginTop: 4, font: "inherit", width: "100%", fontWeight: inventoryOpen ? 700 : 400 }}>
         Inventory
       </button>
+      <button data-testid="recovery-toggle" onClick={() => { setInventoryOpen(false); recoveryStore.setOpen(!recoveryOpen); }} aria-pressed={recoveryOpen} style={{ marginTop: 4, font: "inherit", width: "100%", fontWeight: recoveryOpen ? 700 : 400 }}>
+        Recovery
+      </button>
     </div>
-    {inventoryOpen && <InventoryDrawer onClose={() => setInventoryOpen(false)} onSelect={onSelect} selectedId={selectedId} />}
+    {inventoryOpen && !recoveryOpen && <InventoryDrawer onClose={() => setInventoryOpen(false)} onSelect={onSelect} selectedId={selectedId} />}
+    {recoveryOpen && <RecoveryDrawer onClose={() => recoveryStore.setOpen(false)} onSelect={onSelect} selectedId={selectedId} />}
     </>
   );
 }
