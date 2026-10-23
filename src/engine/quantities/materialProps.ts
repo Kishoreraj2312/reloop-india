@@ -28,7 +28,7 @@ const d = (densityKgM3: number, basis: DensityBasis, source: string, note?: stri
 const none = (source: string, note: string): MaterialProps => ({ densityKgM3: null, basis: "assumed", source, note });
 
 const RCC = "A1 STRUCTURAL_MATERIAL 2400 kg/m3 (plain concrete ≈ 24 kN/m3, IS 875 (Part 1))";
-const CONC_NOTE = "reinforcement not included; plaster/paint layer not included";
+const CONC_NOTE = "plaster/paint layer not included";
 const BRICK = "DECISIONS_AND_ASSUMPTIONS.md (A0): brick masonry 1800 kg/m3; IS 875 (Part 1) brickwork ≈ 1800–1920";
 const GRANITE = "granite 2600–2800 kg/m3 (typical; IS 875 (Part 1) stone table)";
 const MORTAR = "cement mortar 1900–2100 kg/m3 (typical; IS 875 (Part 1))";

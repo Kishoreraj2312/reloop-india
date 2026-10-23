@@ -7,6 +7,7 @@
 import { registry } from "@/building/registry";
 import { hasMaterial, materialById } from "@/building/materialLibrary";
 import { STRUCTURAL_MATERIAL } from "@/building/structure";
+import { QuantityInfo, usePrewarmInventory } from "./QuantityInfo";
 
 const FLOOR_NAMES: Record<number, string> = { [-1]: "Foundation", 0: "Ground (G)", 1: "F01", 2: "F02", 3: "F03", 4: "F04", 5: "Roof" };
 
@@ -36,6 +37,7 @@ export function traceNetwork(id: string): string[] {
 }
 
 export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }: { selectedId: string | null; onSelect: (id: string | null) => void; onTrace?: (ids: string[]) => void; traced?: number }) {
+  usePrewarmInventory();
   const c = selectedId ? registry.getById(selectedId) : undefined;
   const material = c ? (hasMaterial(c.materialId) ? materialById(c.materialId).name : c.materialId === STRUCTURAL_MATERIAL.id ? STRUCTURAL_MATERIAL.name : c.materialId) : "";
   const parent = c?.parentId ? registry.getById(c.parentId) : undefined;
@@ -56,6 +58,7 @@ export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }
           <Row k="dimensions" v={dims.map(([k, v]) => `${k} ${fmt(v as number)}`).join(", ")} />
           <Row k="quantity" v={`${fmt(c.quantity)} ${c.unit}`} />
           <Row k="confidence" v={c.confidence} />
+          <QuantityInfo id={c.id} />
           {c.networkId && <Row k="network" v={c.networkId} />}
           {c.nominalSize && <Row k="size" v={c.nominalSize} />}
           {c.gradient !== undefined && <Row k="fall" v={`1 in ${Math.round(1 / c.gradient)}`} />}
