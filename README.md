@@ -22,7 +22,7 @@ and track every recovered component to its next home. It all runs in your browse
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6?style=flat-square&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)
 
-<img src="docs/screenshots/demo/normal_mode_badge.png" alt="ReLoop India: the G+4 building in the dashboard, with layer controls on the left and module tabs along the top" width="100%">
+<img src="docs/screenshots/promo/hero.jpg" alt="The ReLoop India digital twin: a five-storey residential block with balconies, rendered in the browser" width="100%">
 
 </div>
 
@@ -61,18 +61,24 @@ who wants a substantial, well-tested **React Three Fiber** codebase to learn fro
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/demo/tour_02.png" alt="Exploded view of the building with each floor separated"><br><b>Exploded view</b>: floors separated, data unchanged</td>
-    <td width="50%"><img src="docs/screenshots/demo/tour_03.png" alt="One floor with the building ghosted and plumbing and electrical runs visible"><br><b>Services X-ray</b>: pipes, conduits and cables as real parts</td>
+    <td width="50%"><img src="docs/screenshots/promo/exploded.jpg" alt="Exploded view: roof, four storeys and the ground floor floating apart above the footings"><br><b>Exploded view</b>: floors separated, data unchanged</td>
+    <td width="50%"><img src="docs/screenshots/promo/services.jpg" alt="One floor's plumbing and electrical network shown on its own, colour-coded by system"><br><b>Services X-ray</b>: pipes, conduits and cables as real parts</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/demo/tour_05.png" alt="Building coloured by recovery classification next to the recovery inventory table"><br><b>Recovery assessment</b>: the model coloured by classification</td>
-    <td><img src="docs/screenshots/demo/tour_06.png" alt="Removal plan of 93 steps with the top storey's windows and balconies highlighted"><br><b>Removal simulation</b>: a 93-step plan, ordered by dependencies</td>
+    <td><img src="docs/screenshots/promo/cutaway.jpg" alt="Cutaway of a typical floor showing apartments, rooms, doors and balconies"><br><b>Floor cutaway</b>: every room, door and balcony is a component</td>
+    <td><img src="docs/screenshots/promo/app-dashboard.jpg" alt="The app's dashboard: layer controls on the left, module tabs along the top, the building in the viewport"><br><b>The dashboard</b>: layers, floors and one tab per module</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/demo/tour_07.png" alt="Three end-of-life scenarios compared with diversion percentages and material flow bars"><br><b>Scenarios</b>: demolition vs deconstruction vs reuse-first</td>
-    <td><img src="docs/screenshots/demo/tour_09.png" alt="Close-up of a balcony handrail with its inspector details and material passport"><br><b>Material passport</b>: one component, seen through every module</td>
+    <td><img src="docs/screenshots/promo/recovery.jpg" alt="Building coloured by recovery classification next to the recovery inventory table"><br><b>Recovery assessment</b>: the model coloured by classification</td>
+    <td><img src="docs/screenshots/promo/removal.jpg" alt="Removal plan of 93 steps with the top storey's windows and balconies highlighted"><br><b>Removal simulation</b>: a 93-step plan, ordered by dependencies</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/promo/scenarios.jpg" alt="Three end-of-life scenarios compared with diversion percentages and material flow bars"><br><b>Scenarios</b>: demolition vs deconstruction vs reuse-first</td>
+    <td><img src="docs/screenshots/promo/passport.jpg" alt="Close-up of a balcony handrail with its inspector details and material passport"><br><b>Material passport</b>: one component, seen through every module</td>
   </tr>
 </table>
+
+<sub>Data shown in the module screenshots is the app's built-in <i>illustrative</i> demo project, not an assessment of a real building.</sub>
 
 ## 🚀 Quick start
 
