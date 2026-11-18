@@ -19,8 +19,9 @@ import {
 } from "three";
 import { useThree } from "@react-three/fiber";
 import { registry } from "@/building/registry";
+import { instanceExplosion } from "./explode/instances";
 
-const ACCENT = 0xff5a1f;
+const ACCENT = 0xd9531e; // a calm deep orange: visible on pale plaster and on dark ghosts without glowing
 
 export function SelectionOutline({ selectedId, traceIds = [] }: { selectedId: string | null; traceIds?: readonly string[] }) {
   const scene = useThree((s) => s.scene);
@@ -32,9 +33,10 @@ export function SelectionOutline({ selectedId, traceIds = [] }: { selectedId: st
     const drawn = !!selectedId && (scene.getObjectByName(selectedId) instanceof Mesh || registry.getInstance(selectedId) !== undefined);
     const own = sel ? (drawn ? [sel.id] : registry.getChildren(sel.id).map((c) => c.id)) : []; // an assembly: its children
     const targets = [...new Set([...own, ...traceIds])];
-    const lineMat = new LineBasicMaterial({ color: ACCENT, depthTest: false, transparent: true });
-    const tintMat = new MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.35, depthTest: false, side: DoubleSide });
+    const lineMat = new LineBasicMaterial({ color: ACCENT, depthTest: false, depthWrite: false, transparent: true });
+    const tintMat = new MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.28, depthTest: false, depthWrite: false, side: DoubleSide });
     const added: { parent: Object3D; objs: Object3D[]; edges: EdgesGeometry }[] = [];
+    const unfollow: (() => void)[] = []; // A4: outlines of instances follow an exploded assembly
     const edgeCache = new Map<string, EdgesGeometry>();
     for (const id of targets) {
       let parent: Object3D | undefined;
@@ -51,7 +53,9 @@ export function SelectionOutline({ selectedId, traceIds = [] }: { selectedId: st
         parent = mesh;
         geometry = mesh.geometry;
         matrix = new Matrix4();
-        mesh.getMatrixAt(inst!.index, matrix);
+        const canonical = instanceExplosion.canonicalOf(mesh); // the generated matrix: the explosion offsets are added by the follower below
+        if (canonical) matrix.fromArray(canonical, inst!.index * 16);
+        else mesh.getMatrixAt(inst!.index, matrix);
       }
       let edges = edgeCache.get(geometry.uuid);
       if (!edges) edgeCache.set(geometry.uuid, (edges = new EdgesGeometry(geometry, 20)));
@@ -66,11 +70,13 @@ export function SelectionOutline({ selectedId, traceIds = [] }: { selectedId: st
           o.matrix.copy(matrix);
         }
         parent.add(o);
+        if (matrix) unfollow.push(instanceExplosion.followObject(o, id));
       }
       added.push({ parent, objs: [lines, tint], edges });
     }
     invalidate();
     return () => {
+      for (const u of unfollow) u();
       for (const a of added) a.parent.remove(...a.objs);
       for (const e of edgeCache.values()) e.dispose();
       lineMat.dispose();

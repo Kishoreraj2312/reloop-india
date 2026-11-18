@@ -38,7 +38,7 @@ async function shot(name, what) {
 async function screenOf(id) {
   return b.evaluate(`(() => { const r = window.__reloop; const rec = r.records.find((x) => x.id === ${JSON.stringify(id)});
     const v = new (r.camera.position.constructor)(...rec.originalPosition); v.project(r.camera);
-    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight }; })()`);
+    return { x: (v.x * 0.5 + 0.5) * window.__reloop.gl.domElement.getBoundingClientRect().width + window.__reloop.gl.domElement.getBoundingClientRect().left, y: (-v.y * 0.5 + 0.5) * window.__reloop.gl.domElement.getBoundingClientRect().height + window.__reloop.gl.domElement.getBoundingClientRect().top }; })()`);
 }
 
 await b.goto(`${BASE}?view=full`);

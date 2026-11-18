@@ -7,20 +7,34 @@ import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { DEFAULT_CONFIG, type BuildingConfig } from "@/building/config";
-import { buildGrid, openingOf, type ComponentRecord } from "@/building/structure";
+import type { ComponentRecord } from "@/building/structure";
 import { CameraRig } from "./CameraRig";
 import { DevHooks } from "./DevHooks";
-import { clipFor, unionBounds, type ClipSpec, type ViewContext, type ViewName } from "./framing";
+import { clipFor, unionBounds, VIEWER_FOV, type ClipSpec, type ViewName } from "./framing";
+import { makeViewContext } from "./viewContext";
 import { Lighting } from "./Lighting";
 import { EnvironmentLight } from "./EnvironmentLight";
 import { SelectionOutline } from "./SelectionOutline";
 import { BuildingModel } from "./BuildingModel";
 import { RecoveryColoring } from "./recovery/RecoveryColoring";
+import { ExplodeController } from "./explode/ExplodeController";
+import { ExplodeTraces } from "./explode/ExplodeTraces";
+import { RemovalOverlay } from "./removal/RemovalOverlay";
+import { removalStore, removedSet, useRemoval } from "./removal/removalStore";
+import { ScenarioHighlight } from "./scenarios/ScenarioHighlight";
 import { SiteGround } from "./SiteGround";
+import { CameraDirector } from "./presentation/CameraDirector";
+import { PostEffects } from "./look/PostEffects";
 import type { ViewState } from "./viewState";
 
-export const BACKGROUND = "#e9ecef";
-const FOV = 40;
+export const BACKGROUND = "#cfd0c8"; // the haze colour of the backdrop gradient (look/palette.ts)
+
+/** The selection outline of a component that the removal simulation has hidden would float in empty space: skip it. */
+function GatedSelectionOutline({ selectedId, traceIds }: { selectedId: string | null; traceIds?: readonly string[] }) {
+  const rm = useRemoval();
+  const hidden = rm.open && rm.overlay && selectedId !== null && removedSet(removalStore.activePlan()).has(selectedId);
+  return <SelectionOutline selectedId={hidden ? null : selectedId} {...(traceIds ? { traceIds } : {})} />;
+}
 
 interface ViewerProps {
   records: readonly ComponentRecord[];
@@ -32,8 +46,8 @@ interface ViewerProps {
   selectedId?: string | null;
   /** Dev hook: lets the browser verification script change the view state. */
   onViewState?: (v: ViewState) => void;
-  /** Explicit section plane (keeps coordinates <= value), overriding the view's own. */
-  clipOverride?: ClipSpec;
+  /** Explicit section plane (keeps coordinates <= value), overriding the view's own; null = explicitly none. */
+  clipOverride?: ClipSpec | null;
   /** Components highlighted by a network trace. */
   traceIds?: readonly string[];
 }
@@ -41,46 +55,41 @@ interface ViewerProps {
 export function Viewer({ records, cfg = DEFAULT_CONFIG, view = "full", viewState, onSelect, selectedId = null, onViewState, clipOverride, traceIds }: ViewerProps) {
   // Framing and the shadow camera follow the building itself (site MEP items lie outside it).
   const bounds = useMemo(() => unionBounds(records.filter((r) => r.system === "structure" || r.system === "architecture")), [records]);
-  const { ctx, groundY, gridSize } = useMemo(() => {
-    const grid = buildGrid(cfg);
-    const op = openingOf(grid, "stair");
-    const viewCtx: ViewContext = {
-      stair: {
-        centre: [(op.x0 + op.x1) / 2, 0, (op.z0 + op.z1) / 2],
-        halfX: (op.x1 - op.x0) / 2,
-        halfZ: (op.z1 - op.z0) / 2,
-      },
-      sectionZ: grid.zs[2]!, // gridline 3: cuts through a full line of columns and beams
-      // Stair view: cut just below the beams of L3, so L1..L3 stair storeys are visible.
-      stairCutY: grid.levels[3]!.elevation - cfg.beam.depth - 0.1,
-    };
-    return {
-      ctx: viewCtx,
-      groundY: -cfg.foundationDepth - 0.02,
-      gridSize: 2 * Math.ceil(Math.max(cfg.footprintX, cfg.footprintZ)),
-    };
-  }, [cfg]);
-  const clip = useMemo(() => clipOverride ?? clipFor(view, ctx), [clipOverride, view, ctx]);
+  const { ctx, groundY, gridSize } = useMemo(
+    () => ({ ctx: makeViewContext(cfg), groundY: -cfg.foundationDepth - 0.02, gridSize: 2 * Math.ceil(Math.max(cfg.footprintX, cfg.footprintZ)) }),
+    [cfg],
+  );
+  // the forecourt path of the site ground starts at the main entrance (presentation only)
+  const entrance = useMemo(() => {
+    const e = records.find((r) => r.id === "ARC-ENT-G-MAIN");
+    return e ? ([e.originalPosition[0], e.originalPosition[2]] as const) : undefined;
+  }, [records]);
+  const clip = useMemo(() => (clipOverride !== undefined ? (clipOverride ?? undefined) : clipFor(view, ctx)), [clipOverride, view, ctx]);
 
   return (
     <Canvas
       frameloop="demand"
       shadows
       dpr={[1, 2]}
-      camera={{ fov: FOV, near: 0.2, far: 400, position: [60, 40, 60] }}
+      camera={{ fov: VIEWER_FOV, near: 0.2, far: 400, position: [60, 40, 60] }}
       gl={{ antialias: true }}
       onPointerMissed={onSelect ? () => onSelect(null) : undefined}
     >
-      <color attach="background" args={[BACKGROUND]} />
-      <EnvironmentLight intensity={0.4} />
+      <EnvironmentLight />
       <Lighting bounds={bounds} />
       <BuildingModel records={records} onSelect={onSelect} clip={clip} view={viewState} />
-      <SiteGround visible={viewState.isolate !== "FDN"} />
-      <gridHelper args={[gridSize, gridSize, 0x9aa1a8, 0xc3c8cd]} position={[0, groundY, 0]} />
+      <SiteGround visible={viewState.isolate !== "FDN"} footprint={bounds} {...(entrance ? { entrance } : {})} />
+      {viewState.isolate === "FDN" && <gridHelper args={[gridSize, gridSize, 0xa7adb2, 0xcdd1d4]} position={[0, groundY, 0]} />}
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} minDistance={1} maxDistance={180} minPolarAngle={0} maxPolarAngle={Math.PI / 2 - 0.03} />
       <CameraRig view={view} bounds={bounds} ctx={ctx} />
+      <CameraDirector />
       <RecoveryColoring clipKey={clip ? `${clip.axis}:${clip.value}` : ""} xray={!!viewState.xray} />
-      <SelectionOutline selectedId={selectedId} {...(traceIds ? { traceIds } : {})} />
+      <ExplodeController />
+      <ExplodeTraces selectedId={selectedId} />
+      <RemovalOverlay selectedId={selectedId} clipKey={clip ? `${clip.axis}:${clip.value}` : ""} xray={!!viewState.xray} />
+      <ScenarioHighlight selectedId={selectedId} clipKey={clip ? `${clip.axis}:${clip.value}` : ""} xray={!!viewState.xray} />
+      <PostEffects bounds={bounds} />
+      <GatedSelectionOutline selectedId={selectedId} {...(traceIds ? { traceIds } : {})} />
       {onSelect && import.meta.env.DEV && <DevHooks records={records} onSelect={onSelect} onViewState={onViewState} />}
     </Canvas>
   );

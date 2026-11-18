@@ -5,6 +5,9 @@ import { CLASSIFICATION_SHORT, evaluateRow, targetLeafIds } from "@/engine/recov
 import { PALETTE } from "../inventory/ui";
 import { Dot } from "./AssessmentEditor";
 import { STATUS_COLOURS } from "./colors";
+import { removalStore } from "../removal/removalStore";
+import { carbonStore } from "../carbon/carbonStore";
+import { scenarioStore } from "../scenarios/scenarioStore";
 import { recoveryStore, useRecovery } from "./recoveryStore";
 
 const link = { font: "inherit", color: PALETTE.accent, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" } as const;
@@ -15,7 +18,7 @@ export function RecoveryInfo({ id }: { id: string }) {
   const rec = inv.recordById.get(id);
   if (!rec) return null;
   const open = (
-    <button data-testid="open-recovery" onClick={() => recoveryStore.setOpen(true)} style={link}>
+    <button data-testid="open-recovery" onClick={() => (removalStore.setOpen(false), scenarioStore.setOpen(false), carbonStore.setOpen(false), recoveryStore.setOpen(true))} style={link}>
       {assessments.size ? "assess / edit" : "assess recovery"}
     </button>
   );

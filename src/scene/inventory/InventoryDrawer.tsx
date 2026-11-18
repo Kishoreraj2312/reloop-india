@@ -34,7 +34,7 @@ const STATUSES: readonly Status[] = ["calculated", "estimated", "unavailable"];
 const FOOTER_UNITS: readonly Unit[] = ["m3", "m2", "m", "nr", "kg"];
 
 const heading = { fontSize: 10, letterSpacing: 0.5, color: PALETTE.muted, margin: "14px 0 6px", fontWeight: 600 } as const;
-const select = { font: "inherit", fontSize: 12, padding: "2px 4px", border: `1px solid ${PALETTE.line}`, borderRadius: 3, background: "#fff", color: PALETTE.text, minWidth: 0 } as const;
+const select = { font: "inherit", fontSize: 12, padding: "2px 4px", border: `1px solid ${PALETTE.line}`, borderRadius: 6, background: "#fff", color: PALETTE.text, minWidth: 0 } as const;
 
 export function InventoryDrawer({ onClose, onSelect, selectedId }: { onClose: () => void; onSelect: (id: string | null) => void; selectedId: string | null }) {
   const inv = useMemo(() => getModelInventory(), []);
@@ -121,18 +121,13 @@ export function InventoryDrawer({ onClose, onSelect, selectedId }: { onClose: ()
     <div
       data-testid="inventory-drawer"
       style={{
-        position: "fixed",
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: DRAWER_WIDTH,
-        zIndex: 30,
+        flex: "1 1 auto",
+        minHeight: 0,
+        width: "100%",
         display: "flex",
         flexDirection: "column",
         background: PALETTE.panel,
         color: PALETTE.text,
-        borderLeft: `1px solid ${PALETTE.line}`,
-        boxShadow: "-4px 0 14px rgba(0,0,0,0.12)",
         font: "12.5px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif",
         fontVariantNumeric: "tabular-nums",
       }}
@@ -214,7 +209,7 @@ export function InventoryDrawer({ onClose, onSelect, selectedId }: { onClose: ()
             </button>
           )}
           <span style={{ flex: 1 }} />
-          <button type="button" data-testid="inv-export" onClick={exportCsv} disabled={rows.length === 0} style={{ font: "inherit", fontSize: 12, padding: "2px 10px", border: `1px solid ${PALETTE.line}`, borderRadius: 3, background: "#fff", cursor: "pointer", color: PALETTE.text }}>
+          <button type="button" data-testid="inv-export" onClick={exportCsv} disabled={rows.length === 0} style={{ font: "inherit", fontSize: 12, padding: "2px 10px", border: `1px solid ${PALETTE.line}`, borderRadius: 6, background: "#fff", cursor: "pointer", color: PALETTE.text }}>
             Export CSV
           </button>
         </div>

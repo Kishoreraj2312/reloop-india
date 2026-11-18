@@ -6,9 +6,9 @@ existing app: one registry, one viewer, one B1 inventory. It adds no ML, no safe
 figures, and invents no recovery rates.
 
 ```
-src/engine/recovery/     pure engine: types, suggestions, assess (patch + calculation), summary, persist
+src/engine/recovery/     pure engine: types, suggestions, assess (patch + calculation), summary, persist, starter (default sample)
 src/scene/recovery/      recoveryStore (external store + localStorage), RecoveryDrawer, AssessmentEditor,
-                         RecoveryTable, RecoveryInfo (inspector), RecoveryColoring (3D overlay), colors
+                         RecoveryTable, RecoveryInfo (inspector), RecoveryColoring (3D overlay), colors, StarterNotice
 ```
 
 ## Data model
@@ -86,6 +86,45 @@ sparse assessment map is saved in `localStorage` (`rematter.recovery.assessments
 dropped on load, and blocked storage degrades to a session-only state). It is per browser. The colour mode and the quantity /
 mass basis are view settings and are not saved.
 
+## Starter sample (the default)
+
+A browser that has never saved assessments starts with an **illustrative starter sample**, so "Colour the 3D model by assessment"
+shows several colours straight away instead of one pale grey. It is not an assessment of this building: it is one rule per B1
+material category (plus a few finer material rules), with planning figures chosen to show the workflow. `starter.ts` holds the rules
+and applies them through the same `applyPatch` validation as typed-in data.
+
+| What | Sample classification (recovery %) |
+|---|---|
+| Structure (RC frame) · cement screed · plaster · glazing · glass fixtures · roof finish | recycling (90 · 80 · 60 · 85 · 80 · 40) |
+| Masonry: exterior and core walls | recycling (75) |
+| Masonry: interior partitions | refurbish, reuse (50): bricks cleaned and reclaimed |
+| Concrete: bands, fins, lintels | recycling (85) |
+| Concrete: balcony and canopy slabs | further assessment: inspect corrosion and cracking first |
+| Stone sills and treads · boards · metal window frames and railings · kitchen units | refurbish, reuse (70 · 100 · 90 · 80) |
+| Timber doors and frames | direct reuse (100) |
+| Sanitary ware · appliances | further assessment |
+| Floor and wall tiles, ceilings, conduit, cables, pipes, hardware, single balusters | not assessed (high count, low mass; left out as in the demo, so a full save of the assessments stays inside the browser's storage) |
+
+12,050 components, about 97 % of the modelled mass. Rules that are visible in the model: the facade is the "recycling" blue with
+pink balcony slabs, amber window frames, sills and railings; with the exterior walls hidden the interior shows amber partitions.
+
+**Honesty rules**
+
+- Every sample entry carries the note "Starter sample (illustrative)". The Recovery drawer says so in a banner, and the scenario
+  and carbon drawers (which are built on these assessments) say it in one line, with a link back to Recovery.
+- An entry the user changes loses that note, so the note always means "untouched".
+- The sample lives in memory. It is put in when the browser is idle (the model is already on screen), and a pristine sample
+  **writes nothing**. The first edit saves only the changes over the sample (`{"base":"starter", entries, removed}`: a few hundred
+  bytes, not 2.4 MB), so it cannot crowd out the demo's backup or the other modules' data.
+- "Reset all assessments" (or clearing every entry) records the choice (`rematter.recovery.starter.v1` = `declined`): the sample
+  never comes back by itself. "Fill unassessed components with the starter sample" adds it back to components that have no entry and
+  never touches one that has.
+- Saves from before the sample (plain `version: 1` entries) are read exactly as before, with no sample added.
+- The demo project's B2 rules are the sample's (`starterGroups(inv, DEMO_TAG)`), so the auto-loaded demo and the starter colour the
+  model alike; the demo backs up and restores the starter flag with the rest, and Exit demo gives the sample back.
+- Browser checks that need an empty start launch with the flag already set (`launch()` in `cdp.mjs`); only `verifyStarter.mjs`
+  launches with `{ starter: true }`.
+
 ## Generic suggestions
 
 `suggestions.ts` maps each B1 category to a starting classification, method and pathway (for example concrete: recycling as
@@ -102,6 +141,13 @@ grouping), mass basis, and a no-double-counting run over all wall-assembly parts
 hand calculation in the UI, invalid and missing input, the recovery inventory updating, colouring and restore, status / floor /
 material filters, row → inspector selection, floor isolation with the overlay on, assembly and bulk edits, persistence across a
 reload, the mass basis, reset, unchanged draw calls and a clean console.
+`starter.test.ts` (10 tests): every rule valid and labelled, more than 90 % of the mass, several classifications, the finer material
+rules splitting what a category would colour alike, the delta save round trip (a pristine sample saves nothing; edits, removals and additions come back;
+damaged saves are rejected) and `fillWithStarter` never touching an entered entry. `scripts/browser/verifyStarter.mjs`
+(`npm run verify:browser:starter`, 28 checks) starts from a fresh profile: the sample appears by itself, colours the model with
+four classifications, writes nothing until the first edit, saves only the change, survives a reload, is not brought back by a
+reset, is filled back on request, is replaced by the demo and returned by Exit demo, and the scenario and carbon drawers say it
+is in use.
 
 ## Limitations and assumptions to validate
 
@@ -111,5 +157,7 @@ reload, the mass basis, reset, unchanged draw calls and a clean console.
 - B1's own limits carry over: mass exists only where a density does (46,057 components have none), MEP wall and conductor sizes
   are not modelled, reinforcement is not included.
 - Assessments are per browser (localStorage); there is no export/import yet.
+- The starter sample is generic: it does not know this building's condition, mortar, damp or damage. Replace it with real
+  assessments before relying on any figure that is built on it.
 - The overlay recolours at assessment or filter changes (about 85k instances); it is not animated.
 - No cost, carbon or landfill figures: there are no reliable inputs in the model.

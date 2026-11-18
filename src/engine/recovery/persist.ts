@@ -11,7 +11,8 @@ export function serializeAssessments(a: Assessments): string {
 
 const oneOf = <T extends string>(list: readonly T[], v: unknown): T | null => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : null);
 
-function clean(raw: unknown): RecoveryAssessment | null {
+/** One stored entry, validated; null when it is invalid or empty. */
+export function cleanAssessment(raw: unknown): RecoveryAssessment | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
   const classification = oneOf(CLASSIFICATIONS, r.classification);
@@ -42,7 +43,7 @@ export function parseAssessments(text: string | null, validIds?: (id: string) =>
   let dropped = 0;
   for (const e of entries) {
     const id = Array.isArray(e) ? e[0] : undefined;
-    const a = Array.isArray(e) ? clean(e[1]) : null;
+    const a = Array.isArray(e) ? cleanAssessment(e[1]) : null;
     if (typeof id !== "string" || !a || (validIds && !validIds(id))) dropped++;
     else map.set(id, a);
   }

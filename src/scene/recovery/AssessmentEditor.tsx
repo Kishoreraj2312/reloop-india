@@ -27,9 +27,9 @@ import { PALETTE, StatusChip } from "../inventory/ui";
 import { STATUS_COLOURS, hex } from "./colors";
 import { recoveryStore, useRecovery } from "./recoveryStore";
 
-const field: CSSProperties = { font: "inherit", fontSize: 12, padding: "2px 4px", border: `1px solid ${PALETTE.line}`, borderRadius: 3, background: "#fff", color: PALETTE.text, minWidth: 0 };
+const field: CSSProperties = { font: "inherit", fontSize: 12, padding: "2px 4px", border: `1px solid ${PALETTE.line}`, borderRadius: 6, background: "#fff", color: PALETTE.text, minWidth: 0 };
 const label: CSSProperties = { color: PALETTE.muted, fontSize: 11, marginTop: 6 };
-const button: CSSProperties = { font: "inherit", fontSize: 12, padding: "2px 10px", border: `1px solid ${PALETTE.line}`, borderRadius: 3, background: "#fff", cursor: "pointer", color: PALETTE.text };
+const button: CSSProperties = { font: "inherit", fontSize: 12, padding: "2px 10px", border: `1px solid ${PALETTE.line}`, borderRadius: 6, background: "#fff", cursor: "pointer", color: PALETTE.text };
 
 export const Dot = ({ colour }: { colour: number }) => <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 5, background: hex(colour), marginRight: 5, flex: "none", border: "1px solid rgba(0,0,0,0.25)" }} />;
 
@@ -111,7 +111,7 @@ export function LeafEditor({ row }: { row: InventoryRow }) {
         <b data-testid="rec-available">{ev.available.value === null ? "Not available" : `${fmt(ev.available.value)} ${unitText(ev.available.unit)}`}</b> <StatusChip status={ev.available.status} title={ev.available.method} />
       </div>
 
-      <div style={{ marginTop: 6, padding: "4px 6px", background: "#eef1f3", borderRadius: 4, fontSize: 11 }} data-testid="rec-suggestion">
+      <div style={{ marginTop: 6, padding: "4px 6px", background: "#eef1f3", borderRadius: 6, fontSize: 11 }} data-testid="rec-suggestion">
         <div>
           <b>Generic suggestion</b> (a rule of thumb for this kind of material, not an assessment of this component): {CLASSIFICATION_LABELS[sg.classification].toLowerCase()}.
         </div>
@@ -136,7 +136,7 @@ export function LeafEditor({ row }: { row: InventoryRow }) {
       <div style={label}>Note</div>
       <input data-testid="rec-note" style={{ ...field, width: "100%", boxSizing: "border-box" }} value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => assess({ note })} />
 
-      <div style={{ marginTop: 8, padding: "6px 8px", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 4 }} data-testid="rec-result">
+      <div style={{ marginTop: 8, padding: "6px 8px", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 6 }} data-testid="rec-result">
         <div style={{ color: PALETTE.muted, fontSize: 11 }}>Estimated recoverable quantity = available quantity × recovery %</div>
         {ev.recoverable !== null ? (
           <div data-testid="rec-formula" style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
@@ -196,7 +196,7 @@ export function BulkForm({ ids, what, testid = "bulk" }: { ids: readonly string[
     setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: `${r.applied} of ${count} components changed` });
   };
   return (
-    <div data-testid={testid} style={{ padding: "6px 8px", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 4 }}>
+    <div data-testid={testid} style={{ padding: "6px 8px", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 6 }}>
       <div style={{ fontWeight: 600 }}>
         Apply to {count.toLocaleString("en-US")} {what}
       </div>

@@ -9,6 +9,7 @@ import { CATEGORIES, CATEGORY_LABELS, filterRows, FLOOR_LABEL, formatValue, getM
 import {
   CLASSIFICATIONS,
   CLASSIFICATION_SHORT,
+  STARTER_NOTE,
   GROUP_BYS,
   GROUP_BY_LABELS,
   groupKey,
@@ -19,15 +20,15 @@ import {
   type GroupBy,
   type RecoveryRow,
 } from "@/engine/recovery";
-import { DRAWER_WIDTH } from "../inventory/InventoryDrawer";
 import { PALETTE } from "../inventory/ui";
 import { BulkForm, Dot, LeafEditor } from "./AssessmentEditor";
 import { STATUS_COLOURS } from "./colors";
 import { recoveryStore, useRecovery } from "./recoveryStore";
+import { useStarterCount } from "./StarterNotice";
 import { RecoveryTable } from "./RecoveryTable";
 
 const heading = { fontSize: 10, letterSpacing: 0.5, color: PALETTE.muted, margin: "14px 0 6px", fontWeight: 600 } as const;
-const select = { font: "inherit", fontSize: 12, padding: "2px 4px", border: `1px solid ${PALETTE.line}`, borderRadius: 3, background: "#fff", color: PALETTE.text, minWidth: 0 } as const;
+const select = { font: "inherit", fontSize: 12, padding: "2px 4px", border: `1px solid ${PALETTE.line}`, borderRadius: 6, background: "#fff", color: PALETTE.text, minWidth: 0 } as const;
 const th = { textAlign: "right" as const, padding: "2px 4px", fontWeight: 600, fontSize: 10.5, lineHeight: 1.25, verticalAlign: "bottom" as const };
 const td = { textAlign: "right" as const, padding: "1px 4px", fontVariantNumeric: "tabular-nums" as const, fontSize: 11.5, whiteSpace: "nowrap" as const };
 const table = { borderCollapse: "collapse" as const, width: "100%", background: "#fff", border: `1px solid ${PALETTE.line}` };
@@ -76,7 +77,7 @@ interface ListFilter {
 
 export function RecoveryDrawer({ onClose, onSelect, selectedId }: { onClose: () => void; onSelect: (id: string | null) => void; selectedId: string | null }) {
   const inv = useMemo(() => getModelInventory(), []);
-  const { assessments, basis, colour } = useRecovery();
+  const { assessments, basis, colour, starter } = useRecovery();
   const [groupBy, setGroupBy] = useState<GroupBy>("materialCategory");
   const [filter, setFilter] = useState<ListFilter>({});
   const [text, setText] = useState("");
@@ -98,6 +99,10 @@ export function RecoveryDrawer({ onClose, onSelect, selectedId }: { onClose: () 
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
+
+  useEffect(() => recoveryStore.ensureStarter(), []); // the inventory is built by now, so the starter sample can show straight away
+  const starterCount = useStarterCount();
+  const [filledMsg, setFilledMsg] = useState<string | null>(null);
 
   const summary = useMemo(() => summarize(inv, assessments, { basis, groupBy }), [inv, assessments, basis, groupBy]);
   const overall = useMemo(() => summarize(inv, assessments, { basis, groupBy: "status" }), [inv, assessments, basis]);
@@ -143,7 +148,7 @@ export function RecoveryDrawer({ onClose, onSelect, selectedId }: { onClose: () 
 
   const t = overall.totals;
   return (
-    <div data-testid="recovery-drawer" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: DRAWER_WIDTH, zIndex: 30, display: "flex", flexDirection: "column", background: PALETTE.panel, color: PALETTE.text, borderLeft: `1px solid ${PALETTE.line}`, boxShadow: "-4px 0 14px rgba(0,0,0,0.12)", font: "12.5px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif", fontVariantNumeric: "tabular-nums" }}>
+    <div data-testid="recovery-drawer" style={{ flex: "1 1 auto", minHeight: 0, width: "100%", display: "flex", flexDirection: "column", background: PALETTE.panel, color: PALETTE.text, font: "12.5px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif", fontVariantNumeric: "tabular-nums" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderBottom: `1px solid ${PALETTE.line}`, background: "#fff" }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Recovery & reuse assessment</div>
@@ -178,6 +183,12 @@ export function RecoveryDrawer({ onClose, onSelect, selectedId }: { onClose: () 
         </div>
 
         <div style={heading}>SUMMARY</div>
+        {starterCount > 0 && (
+          <div data-testid="recovery-starter" data-count={starterCount} style={{ background: "#fff7e6", border: "1px solid #f0d49a", borderRadius: 6, padding: "5px 8px", marginBottom: 6, fontSize: 11.5 }}>
+            <b>Starter sample.</b> {starterCount.toLocaleString("en-US")} components carry generic, illustrative classifications by material category (note “{STARTER_NOTE}”), so the model has colour to show. They are not an assessment of this building: change any of them, or use “Reset all assessments” to start from nothing.
+            {starter && <span data-testid="recovery-starter-unsaved"> Nothing is saved yet: your changes are saved on top of it.</span>}
+          </div>
+        )}
         <div data-testid="recovery-counts" style={{ marginBottom: 4 }}>
           <b>{overall.assessedCount.toLocaleString("en-US")}</b> of {overall.leafCount.toLocaleString("en-US")} components assessed ·{" "}
           <b>{t.reduce((n, r) => n + r.recoverableComponents, 0).toLocaleString("en-US")}</b> with a recoverable estimate
@@ -284,9 +295,24 @@ export function RecoveryDrawer({ onClose, onSelect, selectedId }: { onClose: () 
         <div style={heading}>PLAN THE FILTERED COMPONENTS</div>
         <BulkForm ids={useMemo(() => filtered.map((r) => r.rec.id), [filtered])} what="filtered components" testid="filtered-bulk" />
         <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
-          <button type="button" data-testid="recovery-clear-filtered" style={{ font: "inherit", fontSize: 12, padding: "2px 10px", border: `1px solid ${PALETTE.line}`, borderRadius: 3, background: "#fff", cursor: "pointer" }} onClick={() => recoveryStore.clear(filtered.map((r) => r.rec.id))}>
+          <button type="button" data-testid="recovery-clear-filtered" style={{ font: "inherit", fontSize: 12, padding: "2px 10px", border: `1px solid ${PALETTE.line}`, borderRadius: 6, background: "#fff", cursor: "pointer" }} onClick={() => recoveryStore.clear(filtered.map((r) => r.rec.id))}>
             Remove assessments of the filtered components
           </button>
+        </div>
+        <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            data-testid="recovery-fill-starter"
+            title="Adds the illustrative starter sample to components that have no assessment yet. Components you have assessed are left exactly as they are."
+            style={{ font: "inherit", fontSize: 12, padding: "2px 10px", border: `1px solid ${PALETTE.line}`, borderRadius: 6, background: "#fff", cursor: "pointer" }}
+            onClick={() => {
+              const n = recoveryStore.fillStarter();
+              setFilledMsg(n > 0 ? `Starter sample added to ${n.toLocaleString("en-US")} unassessed components.` : "Nothing to add: every component the sample covers already has an entry.");
+            }}
+          >
+            Fill unassessed components with the starter sample
+          </button>
+          {filledMsg && <span data-testid="recovery-fill-msg" style={{ color: PALETTE.muted, fontSize: 11 }}>{filledMsg}</span>}
         </div>
         <div style={{ marginTop: 8 }}>
           {confirmReset ? (

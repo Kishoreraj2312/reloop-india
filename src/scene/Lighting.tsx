@@ -1,15 +1,16 @@
 /**
- * Soft hemisphere fill + one shadow-casting directional light, sized from the
- * building bounds. The model is static, so the shadow map is rendered once and then
- * frozen (re-enable with gl.shadowMap.needsUpdate = true when members move, e.g. A4).
+ * Key light, soft hemisphere fill, sized from the building bounds. The model is static, so the shadow map is rendered once and
+ * then frozen (re-enabled with gl.shadowMap.needsUpdate = true when members move, e.g. A4).
+ *
+ * The sun comes from the south-south-east (look/palette.ts): the entrance facade is lit, the east facade a step darker, and
+ * balconies, sunshades and the canopy cast readable shadows on the walls below them. The image-based environment supplies the
+ * sky fill, so shaded faces stay readable without a second shadowless light.
  */
 
 import { useEffect, useMemo } from "react";
 import { useThree } from "@react-three/fiber";
 import type { Box3 } from "@/building/structure";
-
-const SKY = 0xffffff;
-const GROUND = 0x8b9299;
+import { LIGHT, SUN_DIR } from "./look/palette";
 
 interface LightingProps {
   bounds: Box3;
@@ -29,7 +30,8 @@ export function Lighting({ bounds }: LightingProps) {
       (bounds.min[1] + bounds.max[1]) / 2,
       (bounds.min[2] + bounds.max[2]) / 2,
     ];
-    return { radius: r, centre: c, offset: [0.55 * r, 1.25 * r, 0.8 * r] as const };
+    const k = 1.7 * r;
+    return { radius: r, centre: c, offset: [SUN_DIR[0] * k, SUN_DIR[1] * k, SUN_DIR[2] * k] as const };
   }, [bounds]);
 
   useEffect(() => {
@@ -44,20 +46,23 @@ export function Lighting({ bounds }: LightingProps) {
 
   return (
     <>
-      <hemisphereLight args={[SKY, GROUND, 0.55]} />
+      <hemisphereLight args={[LIGHT.hemiSky, LIGHT.hemiGround, LIGHT.hemiIntensity]} />
       <directionalLight
+        name="KeyLight" // A4 refits its shadow frustum to the exploded model by this name
+        color={LIGHT.sun}
         position={offset}
-        intensity={2.7}
+        intensity={LIGHT.sunIntensity}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[4096, 4096]}
         shadow-camera-left={-half}
         shadow-camera-right={half}
         shadow-camera-top={half}
         shadow-camera-bottom={-half}
         shadow-camera-near={0.5}
         shadow-camera-far={4 * radius}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.04}
+        shadow-bias={-0.0003}
+        shadow-normalBias={0.035}
+        shadow-radius={3}
       />
     </>
   );

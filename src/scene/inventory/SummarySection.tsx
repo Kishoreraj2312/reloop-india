@@ -21,7 +21,7 @@ function Card({ card, active, onPick }: { card: SummaryCard; active: boolean; on
         padding: "8px 10px",
         background: active ? "#fdeee6" : "#fff",
         border: `1px solid ${active ? PALETTE.accent : PALETTE.line}`,
-        borderRadius: 5,
+        borderRadius: 6,
         cursor: card.filter === null ? "default" : "pointer",
         color: PALETTE.text,
         minWidth: 0,

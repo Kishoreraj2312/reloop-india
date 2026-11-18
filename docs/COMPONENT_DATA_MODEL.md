@@ -138,7 +138,8 @@ components (47,812 instanced, 945 plain meshes).
 `Building_G4 > Floor_{FDN,L0..L4,ROOF} > {floor}_{structure|architecture} > {floor}_{system}_{category} > meshes/batches`.
 Architecture categories: `exteriorWalls, partitions, openings, floors, ceilings, fixtures, stairFinishes, balconies,
 facade, roof`. The assembly level is carried by `parentId` (assemblies are records, not scene nodes) so an exploded view
-can offset whole categories by group transform and individual assemblies by instance matrix, without touching records.
+can offset whole categories by group transform and individual assemblies by instance matrix, without touching records
+(implemented in A4: see the section below).
 
 ---
 
@@ -182,3 +183,81 @@ User assessments are not record fields. They are a separate sparse map keyed by 
 `recoveryPct`, `preparation`, `destination`, `lossNote`, `note`), persisted in the browser, and combined with the B1
 quantities by `src/engine/recovery/`. The record's own `condition`, `recoveryRoute` and `confidence` placeholders are still
 untouched. See [RECOVERY_ASSESSMENT.md](RECOVERY_ASSESSMENT.md).
+
+---
+
+## Relationship fields and removal order (B3)
+
+`dependencies`, `parentId` and `connectedTo` were written by different generators with different meanings; they do **not** share
+one direction. B3 reads each through its own adapter (`src/engine/removal/graph.ts`) and normalises to "prerequisite → dependent":
+
+| Field | Stored meaning | Removal prerequisite |
+|---|---|---|
+| A1 `dependencies` / `parentId` | the member this one **bears on** (beneath / framed into) | the *listing* member goes first (reverse of the stored direction) |
+| A2 opening `dependencies` | the host wall assembly and lintel the opening sits in | the *opening* goes first (reverse) |
+| A3 supply and electrical `dependencies` | the upstream record that feeds this one | the *listed* record is addressed first (same direction), advisory |
+| A3 drainage `dependencies` | the downstream record this one drains into | the *listing* record goes first (reverse), advisory |
+| A3 `connectedTo` | a physical joint, symmetric | none (unknown relationship, listed for review) |
+| A2 / A3 `parentId` | the containing assembly (a group record) | none: containment; the assembly stands for its parts |
+
+Removal plans are not record fields (the reserved `ScenarioComponentState.removalPhase` is unused): they are a separate sparse
+store referencing ids, persisted in the browser. See [REMOVAL_SIMULATION.md](REMOVAL_SIMULATION.md).
+
+---
+
+## Scenario planning (B4)
+
+End-of-life scenarios are not record fields either. A scenario is a small object of assumptions (template, residual destination,
+baseline rule, selected material categories, category rules, component rules) stored in the browser and keyed to the model only by
+material category (B2's "material category" = the material's substance) and component / assembly id. B4 reads the B1 leaf quantities
+and the B2 assessments, counts every leaf once (assemblies are never rows; an assembly rule reaches its parts), and writes nothing
+back: no record, quantity, assessment or removal plan changes. See [SCENARIO_PLANNING.md](SCENARIO_PLANNING.md).
+
+---
+
+## Reuse requirements and allocations (C2)
+
+A reuse requirement and an allocation are not record fields either. A **requirement** (id, name, application, material category = B2's
+substance, optional B1 form, optional recorded `componentType`, optional `materialId`, quantity + unit (m2 / m3 / m / nr), size ranges
+on the sorted extents length / width / thickness (+ diameter) in metres, tolerance, minimum observed condition, accepted processing,
+structural / unassessed switches, unverifiable "other specifications") is the user's statement of need. An **allocation** (id,
+requirement id, component id, quantity, unit, the match as it was when confirmed) plans a quantity of one component for one
+requirement; there is at most one per (requirement, component). Both are stored in the browser (`rematter.reuse.v1`) and keyed to the
+model only by component id and material category. C2 reads the record's `dimensions`, `materialId`, `componentType`, location fields
+and `system`, the B1 primary quantity and unit, the B2 assessment and the C1 observed condition, and writes none of them. Matches,
+scores, free quantities and suggestions are derived, never stored. The exported plan carries `outcome: planned` with recovered /
+reused quantities null: the hand-off to C3. See [MATERIAL_REUSE_MATCHING.md](MATERIAL_REUSE_MATCHING.md).
+
+---
+
+## Recovery tracking records (C3)
+
+A tracking record is not a record field either. It is the user's **append-only history** for one leaf component: its id (the stable component id), its unit (the component's B1
+primary unit at the start; no conversion) and events (`track` with the B2 plan snapshot, `plan`, `status`, `recovered`, `outcome` reused / recycled / disposed, `unrecovered`,
+`variance`, `note`, system `allocation`, `void`). Each quantity event has a source (measured / estimated / assumed). Status, available / recovered / reused / recycled / disposed /
+not-recovered / in-hand / unaccounted quantities, completion and flags are derived from the history on every read and never stored. Records and batches (named id lists that hold
+no quantities) are kept in the browser (`rematter.tracking.v1`) and keyed to the model only by component id. C3 reads the B1 primary quantity and unit, the B2 assessment, the B3
+plan, the C1 passport and the C2 allocations and writes none of them; assemblies hold no records (their parts do). See [RECOVERY_TRACKING.md](RECOVERY_TRACKING.md).
+
+---
+
+## Grouping for the exploded view (A4)
+
+The explosion groups by fields that mean "membership", and by nothing else. Census of the generated model (87,380 records):
+
+| Group | Defined by | Not defined by |
+|---|---|---|
+| floor | the explicit `floor` field (−1 foundation, 0..4, 5 roof); every record has one and none is more than a storey from its floor's band | bounding-box height |
+| system | `system` (structure 945 plain meshes; architecture, plumbing, electrical 83,420 instanced) | |
+| assembly | an assembly record (`geometry.kind === "group"`) and the records whose `parentId` is that record: 3,015 assemblies, 83,420 members, all inside the envelope, never nested, always on the assembly's floor | `dependencies` (support, hosting, flow), `connectedTo` (joints), A1 `parentId` ("member beneath"; its parent is not a group) |
+
+Structure has no assembly records. The one dependency read is an opening's explicit hosting link to its host wall assembly, used
+only to find the wall normal. Explosion offsets are display state: records, `originalPosition` and registry links are never
+written. See [EXPLODED_VIEW.md](EXPLODED_VIEW.md).
+
+## Appearance and presentation (A5)
+Appearance never enters the data model. The procedural finish of a material is derived from its `substance` / id in the scene layer
+(`scene/surface/surfaceSpecs.ts`); no record, dimension, quantity or material id changes, and every A1 - A3 record keeps
+`confidence: "assumed"`. Presentation mode keeps no component data: it reads the registry and the B1 inventory for its card and
+captions and writes nothing back; the browser check hashes every record before and after a full presentation run.
+

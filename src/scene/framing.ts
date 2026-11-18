@@ -7,10 +7,14 @@
  */
 
 import { recordBounds, type Box3, type ComponentRecord } from "@/building/structure";
+import { ARCH_CONFIG } from "@/building/architecture/config";
 
 export type V3 = readonly [number, number, number];
 
-export type ViewName = "full" | "top" | "stair" | "section";
+/** Vertical field of view (degrees) of the viewer camera; presentation framing uses the same value. */
+export const VIEWER_FOV = 40;
+
+export type ViewName = "full" | "hero" | "top" | "stair" | "section";
 
 export interface CameraPose {
   readonly position: V3;
@@ -107,6 +111,50 @@ export function frameBox(
   };
 }
 
+/** Direction (from the building toward the camera) of the hero view: south-east, about 18 degrees above the horizon, so the
+ *  facades (not the roof) carry the silhouette and the horizon sits in the frame. */
+export const HERO_DIR: V3 = [0.78, 0.42, -1.0];
+
+/** The part of `box` above finished site grade: exterior views frame what is visible, not the buried foundations. */
+export function aboveGrade(box: Box3): Box3 {
+  const g = ARCH_CONFIG.datums.siteGrade;
+  return { min: [box.min[0], Math.min(Math.max(box.min[1], g), box.max[1]), box.min[2]], max: box.max };
+}
+
+/** Pixels of the canvas covered by UI on each side. */
+export interface Insets {
+  readonly top?: number;
+  readonly right?: number;
+  readonly bottom?: number;
+  readonly left?: number;
+}
+
+const clampInset = (v: number | undefined, max: number) => Math.min(Math.max(v ?? 0, 0), max);
+
+/**
+ * `frameBox` into the part of the canvas that UI leaves free: the field of view is shrunk to the free rectangle (so every corner of
+ * the box lands inside it with `margin`), then camera and target slide together so the box centre sits in the middle of that
+ * rectangle. `dir` points from the box toward the camera. Pure; world up is +Y.
+ */
+export function frameBoxInto(box: Box3, dir: V3, vfovDeg: number, width: number, height: number, insets: Insets = {}, margin = 1.1): CameraPose & { readonly distance: number } {
+  const d = norm(dir);
+  const ti = clampInset(insets.top, height * 0.45);
+  const bi = clampInset(insets.bottom, height * 0.7);
+  const li = clampInset(insets.left, width * 0.4);
+  const ri = clampInset(insets.right, width * 0.6);
+  const Hf = height - bi - ti;
+  const Wf = width - ri - li;
+  const tanHalf = Math.tan((vfovDeg * Math.PI) / 360);
+  const vfovEff = (2 * Math.atan((tanHalf * Hf) / height) * 180) / Math.PI;
+  const pose = frameBox(box, d, vfovEff, Wf / Hf, margin);
+  const dist = Math.hypot(pose.position[0] - pose.target[0], pose.position[1] - pose.target[1], pose.position[2] - pose.target[2]);
+  const { right, upv } = basis(d);
+  const slideY = ((bi - ti) / height) * dist * tanHalf; // camera and target down: the model rises on screen
+  const slideX = ((ri - li) / width) * dist * tanHalf * (width / height); // camera and target right: the model moves left
+  const shift = (p: V3): V3 => [p[0] - upv[0] * slideY + right[0] * slideX, p[1] - upv[1] * slideY + right[1] * slideX, p[2] - upv[2] * slideY + right[2] * slideX];
+  return { position: shift(pose.position), target: shift(pose.target), distance: dist };
+}
+
 /** Clip plane for a view: keep everything with coordinate <= value along `axis`. */
 export interface ClipSpec {
   readonly axis: "x" | "y" | "z";
@@ -141,7 +189,8 @@ export function clipFor(name: ViewName, ctx: Pick<ViewContext, "sectionZ" | "sta
 
 /**
  * Camera for a named view.
- *  full    — oblique view of the whole building
+ *  full    — oblique view of the whole building (from the north-east)
+ *  hero    — presentation axonometric from the south-east: the entrance facade, the south balconies and the east facade
  *  top     — straight down
  *  stair   — oblique view down into the stair core (building cut above `stairCutY`)
  *  section — view toward -Z of the model cut at a column line (`sectionZ`)
@@ -156,6 +205,8 @@ export function viewSpec(
   switch (name) {
     case "full":
       return { pose: frameBox(box, [0.85, 0.62, 1.0], vfovDeg, aspect) };
+    case "hero":
+      return { pose: frameBox(aboveGrade(box), HERO_DIR, vfovDeg, aspect, 1.08) };
     case "top":
       return { pose: frameBox(box, [0, 1, 0.0005], vfovDeg, aspect, 1.06) };
     case "stair": {

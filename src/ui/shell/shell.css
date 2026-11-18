@@ -1,0 +1,135 @@
+/* Application shell. A dashboard frame: top bar, scene sidebar, 3D viewport, workspace dock. The columns share the window, so the
+   viewport is always exactly the space that is left and no panel ever covers another or the model. Uses the --rm-* tokens
+   (src/ui/theme.css): solid surfaces, 1 px rules, one accent. */
+
+:root {
+  --sh-bg: #e6e9eb;
+  --sh-top-h: 44px;
+}
+
+.sh-root { display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--sh-bg); color: var(--rm-ink); font: 12px/1.5 var(--rm-font); }
+.sh-root *, .sh-root *::before, .sh-root *::after { box-sizing: border-box; }
+.sh-main { flex: 1; min-height: 0; display: flex; }
+
+/* ── top bar ──────────────────────────────────────────────────────────────────── */
+.sh-top { flex: none; height: var(--sh-top-h); display: flex; align-items: center; gap: 12px; padding: 0 10px; background: #fff; color: var(--rm-ink); border-bottom: 1px solid var(--rm-line); z-index: 40; }
+
+/* workspace tabs: flat, in workflow order, a hairline between the groups; the open workspace is a soft pill */
+.sh-nav { display: flex; align-items: center; min-width: 0; }
+.sh-group { display: inline-flex; align-items: center; gap: 2px; }
+.sh-group + .sh-group { margin-left: 8px; padding-left: 8px; position: relative; }
+.sh-group + .sh-group::before { content: ""; position: absolute; left: 0; top: 50%; height: 16px; border-left: 1px solid var(--rm-line); transform: translateY(-50%); }
+.sh-tab { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--rm-muted); font: 500 12.5px var(--rm-font); cursor: pointer; white-space: nowrap; transition: background 0.12s, color 0.12s; }
+.sh-tab:hover { color: var(--rm-ink); background: var(--rm-hover); }
+.sh-tab[aria-pressed="true"] { background: var(--rm-hover); color: var(--rm-ink); font-weight: 600; }
+.sh-tab[aria-pressed="true"] svg { color: var(--rm-accent); }
+.sh-tab:focus-visible, .sh-act:focus-visible { outline: 2px solid var(--rm-focus); outline-offset: 1px; }
+.sh-badge { color: var(--rm-ink-3); font: 500 11px var(--rm-font); font-variant-numeric: tabular-nums; }
+.sh-tab[aria-pressed="true"] .sh-badge { color: var(--rm-accent); }
+
+.sh-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; flex: none; }
+.sh-count { color: var(--rm-ink-3); font-size: 11px; margin-right: 8px; white-space: nowrap; }
+.sh-act { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--rm-muted); font: 500 12px var(--rm-font); cursor: pointer; white-space: nowrap; }
+.sh-act:hover:not(:disabled) { background: var(--rm-hover); color: var(--rm-ink); }
+.sh-act:disabled { opacity: 0.4; cursor: default; }
+.sh-act[aria-pressed="true"] { background: var(--rm-hover); color: var(--rm-ink); }
+.sh-act.primary { margin-left: 6px; background: var(--rm-accent); color: #fff; }
+.sh-act.primary:hover { background: #9c3a14; color: #fff; }
+
+/* the top bar gives up its words in this order: the component count, the action labels, the labels of the tabs that are not open
+   (the open one always keeps its name), and finally every tab label */
+@media (max-width: 1400px) { .sh-count { display: none; } }
+@media (max-width: 1300px) { .sh-act-label { display: none; } .sh-act { padding: 0 9px; } }
+@media (max-width: 1100px) {
+  .sh-tab:not([aria-pressed="true"]) .sh-tab-label { display: none; }
+  .sh-tab:not([aria-pressed="true"]) { padding: 0 10px; }
+}
+@media (max-width: 960px) { .sh-tab-label { display: none; } }
+
+/* ── scene sidebar ────────────────────────────────────────────────────────────── */
+.sh-left { flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--rm-panel); border-right: 1px solid var(--rm-line); overflow: hidden; }
+.sh-ltabs { flex: none; display: flex; align-items: stretch; background: #fff; border-bottom: 1px solid var(--rm-line); padding-left: 6px; }
+.sh-ltab { position: relative; flex: 1; min-width: 0; border: 0; background: none; padding: 12px 4px 11px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--rm-muted); font: 550 12.5px var(--rm-font); cursor: pointer; white-space: nowrap; }
+.sh-ltab:hover { color: var(--rm-ink); }
+.sh-ltab[aria-selected="true"] { color: var(--rm-ink); border-bottom-color: var(--rm-accent); }
+.sh-ltab:focus-visible, .sh-iconbtn:focus-visible, .sh-rail-btn:focus-visible { outline: 2px solid var(--rm-focus); outline-offset: -2px; }
+.sh-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--rm-accent); vertical-align: 2px; }
+.sh-iconbtn { flex: none; width: 38px; border: 0; border-left: 1px solid var(--rm-line); background: none; color: var(--rm-muted); cursor: pointer; display: grid; place-items: center; }
+.sh-iconbtn:hover { background: var(--rm-hover); color: var(--rm-ink); }
+.sh-lbody { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; scrollbar-width: thin; }
+.sh-pane[hidden] { display: none; }
+
+.sh-rail { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: var(--rm-panel); border-right: 1px solid var(--rm-line); }
+.sh-rail-btn { position: relative; width: 36px; height: 36px; border: 0; border-radius: 8px; background: none; color: var(--rm-muted); cursor: pointer; display: grid; place-items: center; }
+.sh-rail-btn:hover { background: var(--rm-hover); color: var(--rm-ink); }
+.sh-rail-btn[aria-pressed="true"] { background: #fff; color: var(--rm-ink); box-shadow: inset 0 0 0 1px var(--rm-line); }
+.sh-rail-btn .sh-dot { position: absolute; top: 6px; right: 6px; margin: 0; }
+.sh-rail-sep { width: 22px; height: 1px; background: var(--rm-line); margin: 4px 0; }
+
+/* cards and rows inside the sidebar */
+.sh-card { background: #fff; border: 1px solid var(--rm-line); border-radius: 8px; padding: 10px 12px 8px; margin-bottom: 12px; }
+.sh-card > .rm-heading { margin-bottom: 4px; }
+.sh-card-note { color: var(--rm-muted); font-size: 11px; margin: 2px 0 4px; }
+.sh-row { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px; margin: 0 -4px; border-radius: 5px; cursor: pointer; font-size: 12.5px; }
+.sh-row:hover { background: var(--rm-hover); }
+.sh-row input[type="checkbox"] { margin: 0; width: 15px; height: 15px; accent-color: var(--rm-ink); flex: none; }
+.sh-row .grow { flex: 1; min-width: 0; }
+.sh-chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 0 8px 27px; }
+.sh-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 7px; border: 1px solid var(--rm-line); border-radius: 999px; background: #fff; color: var(--rm-ink-2); font-size: 11.5px; cursor: pointer; }
+.sh-chip:hover { background: var(--rm-hover); }
+.sh-chip input[type="checkbox"] { margin: 0; width: 13px; height: 13px; accent-color: var(--rm-ink); }
+.sh-field { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; }
+.sh-field > span { color: var(--rm-ink-2); font-weight: 550; }
+.sh-field .rm-select { flex: 1; min-width: 0; height: 30px; }
+.sh-floorlist { display: flex; flex-direction: column; }
+.sh-floor { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; margin: 0 -4px; border-radius: 5px; cursor: pointer; font-size: 12.5px; }
+.sh-floor:hover { background: var(--rm-hover); }
+.sh-floor input { margin: 0; width: 15px; height: 15px; accent-color: var(--rm-ink); }
+.sh-floor .lvl { margin-left: auto; color: var(--rm-ink-3); font: 11px var(--rm-mono); }
+.sh-seg { display: inline-flex; width: 100%; padding: 2px; border-radius: 8px; background: #e9ecee; margin-bottom: 12px; }
+.sh-seg button { flex: 1; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--rm-muted); font: 550 12px var(--rm-font); cursor: pointer; }
+.sh-seg button:hover:not(:disabled) { color: var(--rm-ink); }
+.sh-seg button[aria-selected="true"] { background: #fff; color: var(--rm-ink); box-shadow: 0 1px 2px rgba(15, 23, 32, 0.12); }
+.sh-seg button:disabled { opacity: 0.45; cursor: default; }
+.sh-empty { margin: 4px 0 12px; padding: 14px 14px; border: 1px dashed #c3c9ce; border-radius: 8px; color: var(--rm-muted); text-align: center; line-height: 1.5; }
+.sh-empty b { display: block; color: var(--rm-ink-2); font-size: 13px; margin-bottom: 2px; }
+.sh-explode-off { text-align: left; }
+.sh-explode-off .rm-btn { width: auto; padding: 0 14px; margin-top: 10px; }
+
+/* the legacy panels, hosted inside the sidebar, lose their floating-card chrome (the sidebar is the panel) */
+.sh-left .rm-panel.sh-bare { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0 !important; max-width: none !important; }
+.sh-left [data-testid="explode-panel"] { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; max-width: none; }
+
+/* ── viewport ─────────────────────────────────────────────────────────────────── */
+.sh-view { position: relative; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: #bfc3c2; }
+.sh-hud { position: absolute; right: 12px; bottom: 12px; z-index: 5; white-space: nowrap; padding: 4px 11px; border: 1px solid var(--rm-line); border-radius: 999px; background: rgba(251, 251, 250, 0.9); color: var(--rm-muted); font-size: 11px; pointer-events: none; }
+.sh-hud kbd { font: 600 10.5px var(--rm-font); color: var(--rm-ink-2); }
+
+/* ── workspace dock ───────────────────────────────────────────────────────────── */
+.sh-dock { position: relative; flex: none; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--rm-panel); border-left: 1px solid var(--rm-line); overflow: hidden; }
+.sh-resize { position: absolute; left: 0; top: 0; bottom: 0; width: 7px; z-index: 6; cursor: col-resize; touch-action: none; }
+.sh-resize::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: transparent; transition: background 0.12s; }
+.sh-resize:hover::after, .sh-resize[data-drag="true"]::after { background: var(--rm-accent); }
+.sh-root[data-dragging="true"] { user-select: none; cursor: col-resize; }
+.sh-root[data-dragging="true"] canvas { pointer-events: none; }
+
+/* a workspace folded into its summary card floats over the viewport: those cards sit at left: calc(var(--sh-left) + 12px), clear of the sidebar */
+.sh-root { --sh-left: 0px; }
+
+/* ── inspector inside the sidebar: the same text, laid out as a record ───────────── */
+.sh-left [data-testid="id-inspector"] { font-size: 12.5px; line-height: 1.55; }
+.sh-left [data-testid="id-inspector"] > .rm-heading { margin: 0 0 8px; }
+.sh-left [data-testid="id-inspector"] .ci-id { display: inline-block; padding: 1px 7px; margin-bottom: 4px; border-radius: 5px; background: #eef0f1; color: var(--rm-ink); user-select: all; }
+.sh-left [data-testid="id-inspector"] .ci-name { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--rm-line); }
+.sh-left [data-testid="id-inspector"] .ci-row { padding: 1px 0; }
+.sh-left [data-testid="id-inspector"] .ci-k { display: inline-block; min-width: 82px; }
+
+/* ── material passport inside the sidebar: label and status on one line, the value under it ─────────────────── */
+.sh-left [data-testid="passport-panel"] table, .sh-left [data-testid="passport-panel"] tbody { display: block; width: 100%; }
+.sh-left [data-testid="passport-panel"] tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label chip" "value value"; column-gap: 8px; padding: 4px 0 5px; }
+.sh-left [data-testid="passport-panel"] tr > td { display: block; width: auto !important; padding: 0 !important; }
+.sh-left [data-testid="passport-panel"] tr > td:nth-child(1) { grid-area: label; font-size: 11px; }
+.sh-left [data-testid="passport-panel"] tr > td:nth-child(2) { grid-area: value; font-size: 12.5px; margin-top: 1px; }
+.sh-left [data-testid="passport-panel"] tr > td:nth-child(3) { grid-area: chip; text-align: right; }
+
+.sh-root [hidden] { display: none !important; }

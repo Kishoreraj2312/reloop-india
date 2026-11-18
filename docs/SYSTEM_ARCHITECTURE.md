@@ -60,10 +60,22 @@ src/
     Viewer.tsx, Lighting.tsx, EnvironmentLight.tsx (RoomEnvironment), SiteGround.tsx, CameraRig.tsx, framing.ts
     SelectionOutline.tsx (plain meshes, instances, whole assemblies), DevHooks.tsx (window.__reloop, dev only)
   App.tsx           — generate once (structure + architecture), register once, render; URL params
-scripts/browser/    — dependency-free Chrome/CDP verification (verify.mjs A1, verifyA2.mjs A2, verifyA3.mjs A3, shots.mjs)
+scripts/browser/    — dependency-free Chrome/CDP verification (verify.mjs A1, verifyA2.mjs A2, verifyA3.mjs A3, verifyB1..B5.mjs, verifyC1/C2/C3.mjs, verifyA4/A5.mjs, shots.mjs)
 scripts/plans/      — drawPlans.ts (npm run plans -> docs/plans/*.svg), schedule.ts, inventory.ts
 docs/               — Project documentation; docs/screenshots/a1, docs/screenshots/a2, docs/plans
 ```
+
+Look and presentation (A5): `scene/look` (palette, procedural sky), `scene/surface` (noise texture, per-substance finishes, shader
+patch), `scene/presentation` (pure presets and guided scenes, camera flights, presenter side effects, the overlay UI), `src/ui/theme.css`
+(tokens). See PRESENTATION_AND_VISUALS.md.
+
+Part B and A4 modules: `engine/quantities` (B1), `engine/recovery` + `scene/recovery` (B2), `engine/removal` + `scene/removal` (B3),
+`engine/scenarios` + `scene/scenarios` (B4: demolition vs deconstruction scenarios, see SCENARIO_PLANNING.md),
+`engine/carbon` + `scene/carbon` (B5, see CARBON_ASSESSMENT.md), `engine/passport` + `scene/passport` (C1, see MATERIAL_PASSPORTS.md),
+`engine/reuse` + `scene/reuse` (C2: reuse requirements, explainable matching, allocation ledger; see MATERIAL_REUSE_MATCHING.md),
+`engine/tracking` + `scene/tracking` (C3: append-only recovery histories, planned-versus-actual reports; see RECOVERY_TRACKING.md),
+`engine/explode` + `scene/explode` (A4: pure solver and rules in the engine; group/instance drivers, controller and panel in the
+scene). Each engine is pure and reads the same records the viewer renders.
 
 MEP rendering (A3): plumbing and electrical records go through the same instanced batches; catalogue
 parts use vertex-coloured unit meshes (`scene/mep/partGeometry.ts`). Controls add system and category
@@ -86,8 +98,9 @@ confirms every drawn component resolves to exactly one record.
 ## Scene Hierarchy
 `Building_G4 > Floor_{FDN,L0..L4,ROOF} > {floor}_{structure|architecture} > {floor}_{system}_{assembly|category} > mesh | InstancedMesh`
 
-Each mesh carries `userData.componentId` and `name = component ID`. Exploded-view offsets will be applied as
-group-level transforms (reading `originalPosition`, never overwriting).
+Each mesh carries `userData.componentId` and `name = component ID`. The exploded view (A4) applies floor and system
+offsets as translations of the `Floor_*` and `<floor>_<system>` groups and assembly offsets as translation elements of the
+instance matrices; canonical local transforms and `originalPosition` are never written (see EXPLODED_VIEW.md).
 
 ## Rendering notes
 - Architecture: one InstancedMesh per floor × category × material × unit shape over a shared 1 m box / unit cylinder;
@@ -96,7 +109,12 @@ group-level transforms (reading `originalPosition`, never overwriting).
 - Structure: one mesh per component behind `ComponentMesh`; geometries are shared by dimension key (19 geometries for 939 meshes),
   one material per member type. Instancing can replace the wrapper without changing identity.
 - `frameloop="demand"`; the shadow map is rendered once and frozen (`shadowMap.autoUpdate = false`) because the model
-  is static — set `needsUpdate` when members move (A4). Cut views use per-material clip planes with `clipShadows`.
+  is static. While A4 displaces anything, the key light (named `KeyLight`) and its shadow frustum are refitted to the displaced
+  bounds and `needsUpdate` is set with each change; the exact original values are restored at parameter 0. Cut views use
+  per-material clip planes with `clipShadows` (world-space: they cut the displayed geometry).
+- Instance matrix ownership: translation (elements 12–14) belongs to the A4 explosion, the linear part (0–11, 15) to B3's removal
+  overlay (zero scale = removed), so the two compose; overlays that copy instances (B3 tints, selection outlines) register as
+  followers of `scene/explode/instances.ts` and move with their source.
 - Prisms (slab panels, stair flights) use `prismGeometry.ts`, **not** `ExtrudeGeometry`: in three r175 it emits no caps
   when `bevelEnabled: false`. `geometryPool.test.ts` guards this (closed, outward-wound meshes).
 

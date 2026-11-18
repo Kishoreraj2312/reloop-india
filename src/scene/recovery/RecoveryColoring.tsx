@@ -5,21 +5,29 @@
  *   instanced batches         swap to a white clone of their material and write instanceColor
  * Clones copy the original's clipping planes, side and transparency, so section views and glass
  * still work. Selection outlines are children of the meshes and are not touched.
+ * While the B3 removal simulation is shown it takes priority: this overlay is suspended (originals restored) and
+ * resumes when the simulation is hidden, so the two never write the same materials. It is suspended the same way while a
+ * B4 scenario highlight is shown, so one colour meaning is on screen at a time.
  */
 
 import { useEffect } from "react";
 import { Color, InstancedMesh, Mesh, MeshStandardMaterial, type Material, type Object3D } from "three";
 import { useThree } from "@react-three/fiber";
 import { STATUS_COLOURS } from "./colors";
+import { useRemoval } from "../removal/removalStore";
+import { useScenarios } from "../scenarios/scenarioStore";
 import { useRecovery } from "./recoveryStore";
 
 export function RecoveryColoring({ clipKey, xray }: { clipKey: string; xray: boolean }) {
   const { colour, assessments, focus } = useRecovery();
+  const rm = useRemoval();
+  const sc = useScenarios();
+  const suspended = (rm.open && rm.overlay && rm.plans.some((p) => p.id === rm.activeId)) || ((sc.open || sc.externalOpen) && sc.highlight !== null);
   const scene = useThree((s) => s.scene);
   const invalidate = useThree((s) => s.invalidate);
 
   useEffect(() => {
-    if (!colour) return;
+    if (!colour || suspended) return;
     const root = scene.getObjectByName("Building_G4");
     if (!root) return;
     const cls = (id: string): number => {
@@ -72,7 +80,7 @@ export function RecoveryColoring({ clipKey, xray }: { clipKey: string; xray: boo
       invalidate();
     };
     // clipKey / xray: re-clone when the originals' clipping or opacity change
-  }, [colour, assessments, focus, scene, invalidate, clipKey, xray]);
+  }, [colour, suspended, assessments, focus, scene, invalidate, clipKey, xray]);
 
   return null;
 }

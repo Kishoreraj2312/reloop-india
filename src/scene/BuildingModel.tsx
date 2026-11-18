@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useMemo } from "react";
-import { DoubleSide, FrontSide, Plane, Vector3, type Group } from "three";
+import { DoubleSide, FrontSide, Plane, Vector3, type Group, type Material, type Mesh } from "three";
 import { useThree } from "@react-three/fiber";
 import { ARCH_CATEGORIES, type ComponentRecord } from "@/building/structure";
 import { AssemblyGroup, BuildingGroup, FloorGroup, SystemGroup } from "./SceneHierarchy";
@@ -66,20 +66,28 @@ export function BuildingModel({ records, onSelect, clip, view }: BuildingModelPr
     invalidate();
   }, [clip, materials, archMaterials, gl, invalidate]);
 
-  // X-ray: ghost structure and architecture materials (MEP materials stay opaque).
+  // X-ray: ghost structure and architecture materials (MEP materials stay opaque). A ghost casts no shadow: the services keep theirs.
   useEffect(() => {
     const mep = new Set(MEP_MATERIALS.map((m) => m.id));
+    const ghosted = new Set<Material>();
     for (const m of [...Object.values(materials), ...archMaterials.values()]) {
       if (mep.has(m.name.split("|")[0]!)) continue;
+      ghosted.add(m);
       const base = (m.userData.base ??= { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite }) as { opacity: number; transparent: boolean; depthWrite: boolean };
       m.opacity = view.xray ? Math.min(base.opacity, 0.12) : base.opacity;
       m.transparent = view.xray ? true : base.transparent;
       m.depthWrite = view.xray ? false : base.depthWrite;
       m.needsUpdate = true;
     }
+    scene.getObjectByName("Building_G4")?.traverse((o) => {
+      const mesh = o as Mesh;
+      if (!mesh.isMesh || !ghosted.has(mesh.material as Material)) return;
+      mesh.userData.castBase ??= mesh.castShadow;
+      mesh.castShadow = view.xray ? false : (mesh.userData.castBase as boolean);
+    });
     gl.shadowMap.needsUpdate = true;
     invalidate();
-  }, [view.xray, materials, archMaterials, gl, invalidate]);
+  }, [view.xray, materials, archMaterials, gl, scene, invalidate]);
 
   // Layer / floor visibility: set group flags directly.
   useEffect(() => {

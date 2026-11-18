@@ -1,19 +1,22 @@
 /**
- * One material per structural member type (restrained, distinct neutrals).
+ * One material per structural member type (restrained, distinct warm-neutral concrete tones, with a shared procedural
+ * concrete finish; appearance only: A1 records one assumed RCC material for every member).
  */
 
 import { MeshStandardMaterial, type Material } from "three";
 import type { ComponentRecord } from "@/building/structure";
+import { applySurface } from "./surface/surfaceShader";
+import { STRUCTURE_SPEC } from "./surface/surfaceSpecs";
 
 export type MemberKind = "footing" | "pedestal" | "column" | "beam" | "slab" | "stair";
 
 export const MEMBER_COLORS: Record<MemberKind, number> = {
-  footing: 0x474c52, // dark grey
-  pedestal: 0x5a6068,
-  column: 0x848b93, // mid grey
-  beam: 0xaab0b6, // lighter grey
-  slab: 0xd3d7da, // pale
-  stair: 0xc4a77f, // warm neutral
+  footing: 0x6a6863, // dark
+  pedestal: 0x7b7973,
+  column: 0xa19e97, // mid
+  beam: 0xb6b3ab, // lighter
+  slab: 0xd0cdc6, // pale
+  stair: 0xc3a984, // warm neutral
 };
 
 export function memberKind(r: ComponentRecord): MemberKind {
@@ -35,8 +38,11 @@ export function memberKind(r: ComponentRecord): MemberKind {
 export type MaterialSet = Record<MemberKind, MeshStandardMaterial>;
 
 export function createMaterials(): MaterialSet {
-  const make = (kind: MemberKind) =>
-    new MeshStandardMaterial({ color: MEMBER_COLORS[kind], roughness: 0.92, metalness: 0 });
+  const make = (kind: MemberKind) => {
+    const m = new MeshStandardMaterial({ color: MEMBER_COLORS[kind], roughness: 0.9, metalness: 0 });
+    applySurface(m, STRUCTURE_SPEC);
+    return m;
+  };
   return {
     footing: make("footing"),
     pedestal: make("pedestal"),

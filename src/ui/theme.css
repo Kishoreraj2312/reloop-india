@@ -1,0 +1,42 @@
+/* RE:MATTER interface tokens and shared panel styling (A5). One set of values for every panel and control: the same type scale,
+   the same 1 px rule, the same radius and shadow, one accent. Panels are solid so the building behind them is never washed
+   out; nothing glows. */
+
+:root {
+  --rm-font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --rm-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --rm-ink: #1f2933;
+  --rm-ink-2: #3e4c59;
+  --rm-ink-3: #7b8794;
+  --rm-muted: #6b7680;
+  --rm-line: #d5d9dd;
+  --rm-panel: #fbfbfa;
+  --rm-hover: #eef0f1;
+  --rm-accent: #b4461b;
+  --rm-focus: #2f6f9f;
+  --rm-shadow: 0 1px 2px rgba(15, 23, 32, 0.06), 0 8px 24px rgba(15, 23, 32, 0.1);
+}
+
+html, body, #root { font-family: var(--rm-font); color: var(--rm-ink); -webkit-font-smoothing: antialiased; }
+
+/* shared panel */
+.rm-panel { background: var(--rm-panel); border: 1px solid var(--rm-line); border-radius: 8px; box-shadow: var(--rm-shadow); color: var(--rm-ink); font: 12px/1.5 var(--rm-font); }
+.rm-heading { font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--rm-muted); margin: 0 0 4px; }
+.rm-row { display: flex; align-items: center; gap: 7px; cursor: pointer; min-height: 20px; }
+.rm-row input[type="checkbox"] { margin: 0; width: 14px; height: 14px; accent-color: var(--rm-ink); }
+.rm-sub { display: flex; flex-wrap: wrap; gap: 0 10px; padding-left: 21px; font-size: 11px; color: var(--rm-ink-2); }
+
+/* shared controls */
+.rm-btn { font: inherit; font-size: 12px; height: 28px; padding: 0 10px; width: 100%; text-align: center; border: 1px solid var(--rm-line); border-radius: 6px; background: var(--rm-panel); color: var(--rm-ink); cursor: pointer; }
+.rm-btn:hover:not(:disabled) { background: var(--rm-hover); }
+.rm-btn:focus-visible { outline: 2px solid var(--rm-focus); outline-offset: 1px; }
+.rm-btn[aria-pressed="true"] { background: var(--rm-ink); border-color: var(--rm-ink); color: #fff; font-weight: 500; }
+.rm-btn:disabled { opacity: 0.45; cursor: default; }
+.rm-btn.accent { border-color: var(--rm-ink); font-weight: 500; }
+.rm-select { font: inherit; font-size: 12px; height: 26px; border: 1px solid var(--rm-line); border-radius: 6px; background: #fff; color: var(--rm-ink); padding: 0 4px; }
+.rm-link { font: inherit; color: var(--rm-accent); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
+.rm-stack { display: flex; flex-direction: column; gap: 4px; }
+
+/* range inputs and checkboxes everywhere share the accent */
+input[type="range"] { accent-color: var(--rm-accent); }
+input[type="checkbox"] { accent-color: var(--rm-ink); }

@@ -81,7 +81,7 @@ export function RecoveryTable({ rows, height, selectedId, assessments, basis, on
   const out: ReactNode[] = [];
   for (let i = first; i < last; i++) out.push(<Row key={rows[i]!.rec.id} row={rows[i]!} top={i * ROW_HEIGHT} a={assessments} basis={basis} selected={rows[i]!.rec.id === selectedId} onSelect={onSelect} />);
   return (
-    <div ref={scroller} onScroll={onScroll} data-testid="rec-scroller" style={{ height, overflow: "auto", position: "relative", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 4 }}>
+    <div ref={scroller} onScroll={onScroll} data-testid="rec-scroller" style={{ height, overflow: "auto", position: "relative", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 6 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 3, display: "flex", width: TOTAL, height: HEADER_HEIGHT, alignItems: "center", background: "#eceff1", borderBottom: `1px solid ${PALETTE.line}`, fontWeight: 600 }}>
         {COLUMNS.map((c) => (
           <div key={c.key} style={cell(c)}>

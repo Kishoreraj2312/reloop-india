@@ -8,7 +8,7 @@ import { join } from "node:path";
 const CHROME = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const PORT = 9333;
 
-export async function launch({ width = 1600, height = 1000, extra = [] } = {}) {
+export async function launch({ width = 1600, height = 1000, extra = [], autoDemo = false, starter = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "reloop-chrome-"));
   const proc = spawn(CHROME, [
     "--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${dir}`,
@@ -32,11 +32,29 @@ export async function launch({ width = 1600, height = 1000, extra = [] } = {}) {
   };
   const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pending.set(i, { res, rej }); ws.send(JSON.stringify({ id: i, method, params })); });
   await send("Page.enable"); await send("Runtime.enable");
+  // an empty application opens with the demo project in it; the checks start from the empty state unless a check asks for the demo (autoDemo)
+  if (!autoDemo) await send("Page.addScriptToEvaluateOnNewDocument", { source: `try { localStorage.setItem("rematter.demo.autoload.off", "1"); } catch {}` });
+  // A browser that has never saved recovery assessments starts from an illustrative starter sample. Checks written against an empty store opt
+  // out here, with the store's own "declined" flag, before any page script runs; a check of the starter itself passes { starter: true }.
+  if (!starter) await send("Page.addScriptToEvaluateOnNewDocument", { source: `try { localStorage.setItem("rematter.recovery.starter.v1", "declined"); } catch {}` });
   await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
-  const evaluate = async (expression) => {
+  const run = async (expression) => {
     const r = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
     return r.result.value;
+  };
+  // The scene sidebar shows one tab at a time (Layers, Floors, Explode, Selection) and folds to a rail. A check that reads or clicks a
+  // control inside it should not have to know which tab that is: before an expression that mentions such a control, ask the dev-only
+  // window.__shell.reveal(selector) hook to show its tab (a no-op for controls outside the sidebar, and when the hook is absent).
+  const REVEAL = /data-testid=\\?["']?([a-z0-9_-]+)|data-(layer|mep|floor)(?:=\\?["']?([A-Za-z0-9_]+))?/g;
+  const evaluate = async (expression) => {
+    const sels = new Set();
+    for (const m of expression.matchAll(REVEAL)) sels.add(m[1] ? `[data-testid="${m[1]}"]` : m[3] ? `[data-${m[2]}="${m[3]}"]` : `[data-${m[2]}]`);
+    if (sels.size) {
+      await run(`(() => { const s = window.__shell; if (s) for (const sel of ${JSON.stringify([...sels])}) s.reveal(sel); })()`);
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    return run(expression);
   };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const goto = async (url) => { await send("Page.navigate", { url }); await sleep(400);

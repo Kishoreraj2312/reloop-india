@@ -1,0 +1,72 @@
+/* Presentation mode (A5): a quiet interface layer over the one viewer. Solid light panels, 1 px rules, one accent; no blur,
+   gradients or glow, so the building stays the brightest, busiest thing on screen. Tokens come from ui/theme.css. */
+
+.pm-root { position: absolute; inset: 0; pointer-events: none; font: 12.5px/1.45 var(--rm-font); color: var(--rm-ink); z-index: 20; }
+.pm-root > * { pointer-events: auto; }
+.pm-root *, .pm-root *::before, .pm-root *::after { box-sizing: border-box; }
+
+.pm-panel { background: var(--rm-panel); border: 1px solid var(--rm-line); border-radius: 8px; box-shadow: var(--rm-shadow); }
+
+/* ── mode label + exit (top right) ── */
+.pm-top { position: absolute; top: 12px; display: flex; align-items: center; gap: 8px; }
+.pm-badge { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--rm-ink); }
+.pm-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--rm-accent); display: inline-block; }
+
+/* ── guided card (top left) ── */
+.pm-card { position: absolute; top: 12px; left: 12px; width: 372px; padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 8px; }
+.pm-card.collapsed { gap: 4px; padding-bottom: 8px; }
+.pm-eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--rm-muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pm-eyebrow .pm-btn { height: 20px; min-width: 20px; padding: 0 6px; font-size: 12px; line-height: 1; color: var(--rm-muted); }
+.pm-title { font-size: 16px; font-weight: 650; line-height: 1.25; margin: 0; }
+.pm-caption { color: var(--rm-ink-2); margin: 0; min-height: 2.9em; }
+.pm-steps { display: flex; gap: 4px; }
+.pm-steps button { flex: 1; height: 4px; padding: 0; border: 0; border-radius: 2px; background: var(--rm-line); cursor: pointer; position: relative; }
+.pm-steps button[aria-current="step"] { background: var(--rm-ink); }
+.pm-steps button.done { background: var(--rm-ink-3); }
+.pm-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pm-nav { display: flex; align-items: center; gap: 4px; border-top: 1px solid var(--rm-line); padding-top: 8px; margin-top: 2px; }
+.pm-nav .grow { flex: 1; }
+.pm-progress { height: 2px; background: var(--rm-line); border-radius: 1px; overflow: hidden; }
+.pm-progress > i { display: block; height: 100%; background: var(--rm-accent); transform-origin: left; animation: pm-dwell linear forwards; }
+@keyframes pm-dwell { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ── toolbar (bottom centre) ── */
+.pm-root > .pm-bar { pointer-events: none; }
+.pm-bar { position: absolute; bottom: 12px; display: flex; align-items: center; justify-content: center; }
+.pm-bar-inner { pointer-events: auto; }
+.pm-bar-inner { display: flex; align-items: center; gap: 6px; padding: 6px; max-width: 100%; flex-wrap: wrap; justify-content: center; }
+.pm-group { display: flex; align-items: center; gap: 2px; }
+.pm-sep { width: 1px; align-self: stretch; background: var(--rm-line); margin: 2px 4px; }
+.pm-label { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--rm-muted); padding: 0 6px 0 4px; }
+
+.pm-btn { font: inherit; font-size: 12.5px; height: 30px; min-width: 30px; padding: 0 11px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--rm-ink); cursor: pointer; white-space: nowrap; }
+.pm-btn:hover { background: var(--rm-hover); }
+.pm-btn:focus-visible { outline: 2px solid var(--rm-focus); outline-offset: 1px; }
+.pm-btn[aria-pressed="true"], .pm-btn[aria-current="true"] { background: var(--rm-ink); color: #fff; }
+.pm-btn.outline { border-color: var(--rm-line); background: var(--rm-panel); }
+.pm-btn.outline:hover { background: var(--rm-hover); }
+/* a pressed outline button keeps dark text on its light face (the pressed rule above sets white text for the dark face) */
+.pm-btn.outline[aria-pressed="true"] { color: var(--rm-ink); }
+.pm-demo { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: #2b2f36; border-radius: 8px; }
+.pm-demo i { width: 7px; height: 7px; border-radius: 4px; background: #f0a646; }
+.pm-demo span { font-weight: 500; letter-spacing: 0; text-transform: none; opacity: .8; }
+.pm-btn.primary { background: var(--rm-ink); color: #fff; }
+.pm-btn.primary:hover { background: #0f161d; }
+.pm-btn:disabled { opacity: .4; cursor: default; }
+.pm-chip { height: 24px; padding: 0 9px; font-size: 11.5px; border: 1px solid var(--rm-line); border-radius: 12px; background: var(--rm-panel); color: var(--rm-ink-2); cursor: pointer; font-family: inherit; }
+.pm-chip:hover { background: var(--rm-hover); }
+.pm-chip[aria-pressed="true"] { background: var(--rm-ink); border-color: var(--rm-ink); color: #fff; }
+.pm-kbd { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--rm-muted); border: 1px solid var(--rm-line); border-radius: 3px; padding: 0 4px; margin-left: 6px; }
+.pm-btn[aria-pressed="true"] .pm-kbd { color: #cfd6dc; border-color: #52606d; }
+
+/* ── compact component card ── */
+.pm-comp { position: absolute; width: 300px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+.pm-comp h4 { margin: 0; font-size: 13px; font-weight: 650; line-height: 1.3; }
+.pm-comp .id { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--rm-muted); word-break: break-all; }
+.pm-comp .row { display: flex; justify-content: space-between; gap: 10px; color: var(--rm-ink-2); }
+.pm-comp .row b { font-weight: 500; color: var(--rm-ink); text-align: right; }
+.pm-comp .actions { display: flex; gap: 6px; margin-top: 6px; }
+.pm-tag { display: inline-block; padding: 0 6px; border-radius: 8px; font-size: 10px; line-height: 15px; background: #fbefd2; color: #7a4d00; white-space: nowrap; }
+.pm-tag.ok { background: #e3f1e8; color: #1f6b43; }
+
+.pm-details { position: absolute; top: 50px; max-height: calc(100% - 140px); overflow: auto; }

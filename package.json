@@ -15,7 +15,20 @@
     "verify:browser:a2": "node scripts/browser/verifyA2.mjs",
     "verify:browser:a3": "node scripts/browser/verifyA3.mjs",
     "verify:browser:b1": "node scripts/browser/verifyB1.mjs",
-    "verify:browser:b2": "node scripts/browser/verifyB2.mjs"
+    "verify:browser:b2": "node scripts/browser/verifyB2.mjs",
+    "verify:browser:b3": "node scripts/browser/verifyB3.mjs",
+    "verify:browser:b4": "node scripts/browser/verifyB4.mjs",
+    "verify:browser:b5": "node scripts/browser/verifyB5.mjs",
+    "verify:browser:c1": "node scripts/browser/verifyC1.mjs",
+    "verify:browser:c2": "node scripts/browser/verifyC2.mjs",
+    "verify:browser:c3": "node scripts/browser/verifyC3.mjs",
+    "verify:browser:a4": "node scripts/browser/verifyA4.mjs",
+    "verify:browser:a5": "node scripts/browser/verifyA5.mjs",
+    "shots:a5": "node scripts/browser/shotsA5.mjs",
+    "census:removal": "vite-node scripts/removal/census.ts",
+    "census:explode": "vite-node scripts/explode/census4.ts",
+    "verify:browser:demo": "node scripts/browser/verifyDemo.mjs",
+    "verify:browser:starter": "node scripts/browser/verifyStarter.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.1.2",

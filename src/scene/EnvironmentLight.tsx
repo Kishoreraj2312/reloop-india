@@ -1,30 +1,46 @@
 /**
- * Procedural environment lighting (three's RoomEnvironment through PMREM): soft image-based
- * light and reflections for glass and metals. No external HDRI is downloaded.
+ * Atmosphere: procedural sky environment (image-based light and reflections, prefiltered once by PMREM), the backdrop
+ * gradient and the renderer's tone mapping. No external HDRI is downloaded. See look/skyEnvironment.ts.
  */
 
 import { useEffect } from "react";
-import { PMREMGenerator } from "three";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { NeutralToneMapping, PMREMGenerator } from "three";
 import { useThree } from "@react-three/fiber";
+import { LIGHT } from "./look/palette";
+import { backdropTexture, buildSkyScene } from "./look/skyEnvironment";
 
-export function EnvironmentLight({ intensity = 0.5 }: { intensity?: number }) {
+export function EnvironmentLight({ intensity = LIGHT.environmentIntensity }: { intensity?: number }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const invalidate = useThree((s) => s.invalidate);
 
   useEffect(() => {
     const pmrem = new PMREMGenerator(gl);
-    const room = new RoomEnvironment();
-    const env = pmrem.fromScene(room, 0.04).texture;
+    const sky = buildSkyScene();
+    const env = pmrem.fromScene(sky, 0.02).texture;
+    const backdrop = backdropTexture();
+    const tm = gl.toneMapping;
+    const exposure = gl.toneMappingExposure;
+    // Khronos PBR Neutral: keeps plaster, timber and paint close to their authored colours while still rolling off highlights
+    gl.toneMapping = NeutralToneMapping;
+    gl.toneMappingExposure = LIGHT.exposure;
     scene.environment = env;
     scene.environmentIntensity = intensity;
+    scene.background = backdrop;
     invalidate();
     return () => {
+      gl.toneMapping = tm;
+      gl.toneMappingExposure = exposure;
       scene.environment = null;
+      scene.background = null;
       env.dispose();
+      backdrop.dispose();
       pmrem.dispose();
-      room.dispose();
+      sky.traverse((o) => {
+        const m = o as { geometry?: { dispose(): void }; material?: { dispose(): void } };
+        m.geometry?.dispose();
+        m.material?.dispose();
+      });
     };
   }, [gl, scene, intensity, invalidate]);
 

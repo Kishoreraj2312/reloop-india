@@ -192,7 +192,7 @@ export function VirtualTable({ rows, height, selectedId, sort, onSort, onSelect 
   }
 
   return (
-    <div ref={scroller} onScroll={onScroll} data-testid="inv-scroller" style={{ height, overflow: "auto", position: "relative", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 4 }}>
+    <div ref={scroller} onScroll={onScroll} data-testid="inv-scroller" style={{ height, overflow: "auto", position: "relative", background: "#fff", border: `1px solid ${PALETTE.line}`, borderRadius: 6 }}>
       <div style={{ position: "sticky", top: 0, zIndex: 3, display: "flex", width: TOTAL_WIDTH, height: HEADER_HEIGHT, alignItems: "center", background: HEADER_BG, borderBottom: `1px solid ${PALETTE.line}`, fontWeight: 600 }}>
         {LEFT.map((c) => header(c, pinLeft(HEADER_BG)))}
         {MIDDLE.map((c) => header(c))}

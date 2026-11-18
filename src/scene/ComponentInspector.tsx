@@ -4,11 +4,18 @@
  * header and the ID (the browser verification script reads the ID from line 2).
  */
 
+import type { CSSProperties } from "react";
 import { registry } from "@/building/registry";
 import { hasMaterial, materialById } from "@/building/materialLibrary";
 import { STRUCTURAL_MATERIAL } from "@/building/structure";
 import { QuantityInfo, usePrewarmInventory } from "./QuantityInfo";
 import { RecoveryInfo } from "./recovery/RecoveryInfo";
+import { ExplodeInfo } from "./explode/ExplodeInfo";
+import { RemovalInfo, usePrewarmRemoval } from "./removal/RemovalInfo";
+import { ScenarioInfo } from "./scenarios/ScenarioInfo";
+import { CarbonInfo } from "./carbon/CarbonInfo";
+import { ReuseInfo } from "./reuse/ReuseInfo";
+import { TrackingInfo } from "./tracking/TrackingInfo";
 
 const FLOOR_NAMES: Record<number, string> = { [-1]: "Foundation", 0: "Ground (G)", 1: "F01", 2: "F02", 3: "F03", 4: "F04", 5: "Roof" };
 
@@ -37,20 +44,21 @@ export function traceNetwork(id: string): string[] {
   return [...out];
 }
 
-export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }: { selectedId: string | null; onSelect: (id: string | null) => void; onTrace?: (ids: string[]) => void; traced?: number }) {
+export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0, style, className }: { selectedId: string | null; onSelect: (id: string | null) => void; onTrace?: (ids: string[]) => void; traced?: number; style?: CSSProperties; className?: string }) {
   usePrewarmInventory();
+  usePrewarmRemoval();
   const c = selectedId ? registry.getById(selectedId) : undefined;
   const material = c ? (hasMaterial(c.materialId) ? materialById(c.materialId).name : c.materialId === STRUCTURAL_MATERIAL.id ? STRUCTURAL_MATERIAL.name : c.materialId) : "";
   const parent = c?.parentId ? registry.getById(c.parentId) : undefined;
   const children = c?.componentType.endsWith("_assembly") ? registry.getChildren(c.id).length : 0;
   const dims = c ? Object.entries(c.dimensions).filter(([, v]) => v !== undefined) : [];
   return (
-    <div data-testid="id-inspector" style={panelStyle}>
-      <div style={{ opacity: 0.55, fontSize: 10, letterSpacing: 0.4 }}>INSPECTOR · {registry.size} components</div>
+    <div data-testid="id-inspector" className={className ? `rm-panel ${className}` : "rm-panel"} style={{ ...panelStyle, ...style }}>
+      <div className="rm-heading" style={{ marginBottom: 2 }}>Inspector · {registry.size} components</div>
       {c ? (
         <>
-          <div style={{ fontWeight: 700, wordBreak: "break-all" }}>{c.id}</div>
-          <div>{c.name}</div>
+          <div className="ci-id" style={{ fontWeight: 650, wordBreak: "break-all", fontFamily: "var(--rm-mono)", fontSize: 11.5 }}>{c.id}</div>
+          <div className="ci-name">{c.name}</div>
           <Row k="type" v={`${c.componentType}${c.assemblyType ? ` (${c.assemblyType})` : ""}`} />
           <Row k="system" v={c.system} />
           <Row k="floor" v={FLOOR_NAMES[c.floor] ?? String(c.floor)} />
@@ -61,6 +69,12 @@ export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }
           <Row k="confidence" v={c.confidence} />
           <QuantityInfo id={c.id} />
           <RecoveryInfo id={c.id} />
+          <RemovalInfo id={c.id} />
+          <ScenarioInfo id={c.id} />
+          <CarbonInfo id={c.id} />
+          <ReuseInfo id={c.id} />
+          <TrackingInfo id={c.id} />
+          <ExplodeInfo id={c.id} />
           {c.networkId && <Row k="network" v={c.networkId} />}
           {c.nominalSize && <Row k="size" v={c.nominalSize} />}
           {c.gradient !== undefined && <Row k="fall" v={`1 in ${Math.round(1 / c.gradient)}`} />}
@@ -91,7 +105,7 @@ export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }
           {children > 0 && <div style={{ opacity: 0.6 }}>assembly of {children} components</div>}
         </>
       ) : (
-        <div style={{ opacity: 0.6 }}>click a member</div>
+        <div style={{ opacity: 0.7, marginTop: 4 }}>click a member of the model (or pick a row in a workspace) to see its details and material passport</div>
       )}
     </div>
   );
@@ -99,8 +113,8 @@ export function ComponentInspector({ selectedId, onSelect, onTrace, traced = 0 }
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
-    <div>
-      <span style={{ opacity: 0.55 }}>{k}: </span>
+    <div className="ci-row">
+      <span className="ci-k" style={{ opacity: 0.55 }}>{k}: </span>
       {v}
     </div>
   );
@@ -111,12 +125,7 @@ const panelStyle = {
   top: 12,
   left: 12,
   padding: "8px 12px",
-  font: "12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace",
-  color: "#1f2933",
-  background: "rgba(255,255,255,0.9)",
-  border: "1px solid #c3c8cd",
-  borderRadius: 6,
   maxWidth: 440,
 } as const;
 
-const linkStyle = { font: "inherit", color: "#b4461b", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" } as const;
+const linkStyle = { font: "inherit", color: "var(--rm-accent)", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" } as const;

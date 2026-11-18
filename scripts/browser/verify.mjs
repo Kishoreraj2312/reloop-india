@@ -31,7 +31,7 @@ report.identity = await b.evaluate(`(() => {
 // `offset` aims at a visible point of the member (e.g. a footing's exposed top corner) instead of its centre.
 async function clickTest(view, id, offset = [0, 0, 0]) {
   await b.goto(`${BASE}?view=${view}${HIDE}`);
-  const pt = await b.evaluate(`(() => { const r = window.__reloop; const m = r.scene.getObjectByName(${JSON.stringify(id)}); const v = m.position.clone(); v.x += ${offset[0]}; v.y += ${offset[1]}; v.z += ${offset[2]}; m.parent.localToWorld(v); v.project(r.camera); return { x: (v.x*0.5+0.5)*innerWidth, y: (-v.y*0.5+0.5)*innerHeight }; })()`);
+  const pt = await b.evaluate(`(() => { const r = window.__reloop; const m = r.scene.getObjectByName(${JSON.stringify(id)}); const v = m.position.clone(); v.x += ${offset[0]}; v.y += ${offset[1]}; v.z += ${offset[2]}; m.parent.localToWorld(v); v.project(r.camera); return { x: (v.x*0.5+0.5)* window.__reloop.gl.domElement.getBoundingClientRect().width + window.__reloop.gl.domElement.getBoundingClientRect().left, y: (-v.y*0.5+0.5)* window.__reloop.gl.domElement.getBoundingClientRect().height + window.__reloop.gl.domElement.getBoundingClientRect().top }; })()`);
   await b.click(pt.x, pt.y);
   const text = await b.evaluate(`document.querySelector('[data-testid=id-inspector]').innerText`);
   const got = text.split("\n")[1];
@@ -49,7 +49,7 @@ await b.shot(`${OUT}/stair_selected.png`);
 // Clearing: select via URL in the full view, then click a pixel that is ground grid only.
 await b.goto(`${BASE}?view=full&select=STR-COL-G-G6${HIDE}`);
 report.selectedBeforeClear = (await b.evaluate(`document.querySelector('[data-testid=id-inspector]').innerText`)).split("\n")[1];
-await b.click(60, 960);
+await b.click(420, 960); // ground only: the bottom-left of the viewport (the sidebar occupies x < 340)
 report.clearedByClickingEmptySpace = (await b.evaluate(`document.querySelector('[data-testid=id-inspector]').innerText`)).includes("click a member");
 
 const closeups = {

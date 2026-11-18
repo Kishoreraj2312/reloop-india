@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { DEFAULT_CONFIG } from "@/building/config";
 import { getStructure } from "@/building/structure";
-import { boxCorners, centreOf, clipFor, fitDistance, frameBox, unionBounds, viewSpec, type V3 } from "./framing";
+import { boxCorners, centreOf, clipFor, fitDistance, frameBox, frameBoxInto, HERO_DIR, unionBounds, viewSpec, type V3 } from "./framing";
 import { buildSceneTree, floorKeyOf } from "./sceneTree";
 import { geometryKey } from "./geometryPool";
 
@@ -125,5 +125,44 @@ describe("geometry sharing", () => {
     expect(keys.size).toBeLessThan(records.length / 10);
     const cols = records.filter((r) => r.componentType === "column");
     expect(new Set(cols.map((r) => geometryKey(r.geometry))).size).toBe(1);
+  });
+});
+
+describe("framing into the free part of the canvas", () => {
+  const W = 1600;
+  const H = 1000;
+  const pix = (p: V3, pos: V3, target: V3) => {
+    const q = project(p, pos, target, 40, W / H);
+    return { x: W / 2 + q.x * (W / 2), y: H / 2 - q.y * (H / 2), depth: q.depth };
+  };
+
+  it("with no insets it is the same framing as frameBox", () => {
+    const a = frameBoxInto(box, HERO_DIR, 40, W, H, {}, 1.1);
+    const b = frameBox(box, HERO_DIR, 40, W / H, 1.1);
+    for (let i = 0; i < 3; i++) {
+      expect(a.position[i]!).toBeCloseTo(b.position[i]!, 9);
+      expect(a.target[i]!).toBeCloseTo(b.target[i]!, 9);
+    }
+  });
+
+  it("every corner lands inside the rectangle the UI leaves free", () => {
+    const insets = { top: 60, bottom: 110, left: 240, right: 580 };
+    const { position, target } = frameBoxInto(box, HERO_DIR, 40, W, H, insets, 1.05);
+    for (const c of boxCorners(box)) {
+      const p = pix(c, position, target);
+      expect(p.depth).toBeGreaterThan(0);
+      expect(p.x).toBeGreaterThanOrEqual(insets.left - 1);
+      expect(p.x).toBeLessThanOrEqual(W - insets.right + 1);
+      expect(p.y).toBeGreaterThanOrEqual(insets.top - 1);
+      expect(p.y).toBeLessThanOrEqual(H - insets.bottom + 1);
+    }
+  });
+
+  it("keeps the view direction", () => {
+    const { position, target } = frameBoxInto(box, HERO_DIR, 40, W, H, { bottom: 120, right: 300 }, 1.1);
+    const d = [position[0] - target[0], position[1] - target[1], position[2] - target[2]];
+    const l = Math.hypot(...d);
+    const h = Math.hypot(...HERO_DIR);
+    for (let i = 0; i < 3; i++) expect(d[i]! / l).toBeCloseTo(HERO_DIR[i]! / h, 9);
   });
 });

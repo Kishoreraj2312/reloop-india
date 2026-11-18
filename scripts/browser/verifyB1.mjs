@@ -12,7 +12,8 @@ const b = await launch({ width: 1600, height: 1000 });
 const r = {};
 const q = (sel) => `document.querySelector(${JSON.stringify(sel)})`;
 const center = (sel) => b.evaluate(`(() => { const e = ${q(sel)}; if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
-const click = async (sel) => { const p = await center(sel); if (!p) throw new Error(`no element ${sel}`); await b.click(p.x, p.y); };
+// scroll the target into its scroll container first: a click must not depend on where the drawer body happened to be left
+const click = async (sel) => { await b.evaluate(`${q(sel)}?.scrollIntoView({ block: "nearest" })`); const p = await center(sel); if (!p) throw new Error(`no element ${sel}`); await b.click(p.x, p.y); };
 const setSelect = (sel, value) => b.evaluate(`(() => { const e = ${q(sel)}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(e, ${JSON.stringify(value)}); e.dispatchEvent(new Event("change", { bubbles: true })); return e.value; })()`);
 const count = () => b.evaluate(`Number(${q("[data-testid=inv-count]")}.dataset.count)`);
 const inspectorId = () => b.evaluate(`${q("[data-testid=id-inspector]")}.innerText.split("\\n")[1]`);
